@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>操作手順書ジェネレーター</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 380px;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #0f0f13;
+    color: #e8e8f0;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    padding: 13px 16px;
+    border-bottom: 1px solid #2a2a3e;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo {
+    width: 30px; height: 30px;
+    background: linear-gradient(135deg, #e94560, #c62a47);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(233,69,96,0.4);
+  }
+  .header h1 { font-size: 13px; font-weight: 700; color: #f0f0ff; }
+  .header p  { font-size: 10px; color: #6060a0; margin-top: 1px; }
+
+  /* ── Status bar ── */
+  .status-bar {
+    padding: 8px 16px;
+    background: #13131f;
+    border-bottom: 1px solid #1e1e30;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .status-indicator { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #7070a0; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #3a3a5a; transition: all 0.3s; }
+  .status-dot.recording {
+    background: #e94560;
+    box-shadow: 0 0 7px rgba(233,69,96,0.7);
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+  .step-count { font-size: 11px; color: #7070a0; }
+  .step-count span { color: #e94560; font-weight: 700; }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    background: #0d0d18;
+    border-bottom: 1px solid #1e1e30;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 9px 4px;
+    background: none;
+    border: none;
+    color: #5a5a80;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .tab-btn:hover { color: #9090b8; background: #12121e; }
+  .tab-btn.active { color: #e94560; border-bottom-color: #e94560; background: #13131f; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Buttons ── */
+  .btn {
+    width: 100%;
+    padding: 10px 14px;
+    border: none; border-radius: 7px;
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-record {
+    background: linear-gradient(135deg, #e94560, #c62a47);
+    color: #fff;
+    box-shadow: 0 3px 12px rgba(233,69,96,0.3);
+  }
+  .btn-record:hover   { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(233,69,96,0.4); }
+  .btn-record.active  { background: linear-gradient(135deg, #ff6b35, #e94560); }
+  .btn-secondary {
+    background: #1e1e30; color: #b0b0d0; border: 1px solid #2a2a3e;
+  }
+  .btn-secondary:hover:not(:disabled) { background: #252538; color: #e0e0f5; border-color: #3a3a5a; }
+  .btn-secondary:disabled { opacity: .3; cursor: not-allowed; }
+  .btn-export {
+    background: linear-gradient(135deg, #1e3a5f, #0d2137);
+    color: #7ec8e3; border: 1px solid #1e4a6f;
+  }
+  .btn-export:hover:not(:disabled) { background: linear-gradient(135deg, #254873, #12273f); }
+  .btn-export:disabled { opacity: .3; cursor: not-allowed; }
+  .btn-import {
+    background: linear-gradient(135deg, #1a2e1a, #0d1f0d);
+    color: #7edb9a; border: 1px solid #2a5a2a;
+  }
+  .btn-import:hover { background: linear-gradient(135deg, #203820, #122012); }
+
+  .controls { padding: 12px 16px; display: flex; flex-direction: column; gap: 7px; }
+  .divider   { height: 1px; background: #1e1e30; margin: 2px 0; }
+
+  /* ── Step list (manage tab) ── */
+  .steps-list {
+    max-height: 260px;
+    overflow-y: auto;
+    margin: 0 16px 12px;
+    border: 1px solid #1e1e30;
+    border-radius: 8px;
+    background: #0d0d18;
+  }
+  .steps-list::-webkit-scrollbar { width: 4px; }
+  .steps-list::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 2px; }
+
+  .step-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #151525;
+    transition: background 0.15s;
+  }
+  .step-row:last-child { border-bottom: none; }
+  .step-row.disabled-row { opacity: 0.38; }
+
+  /* toggle */
+  .toggle {
+    position: relative; flex-shrink: 0;
+    width: 28px; height: 16px; margin-top: 2px;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute; inset: 0;
+    background: #2a2a40; border-radius: 8px;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .toggle-track::after {
+    content: ''; position: absolute;
+    width: 12px; height: 12px;
+    left: 2px; top: 2px;
+    background: #fff; border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .toggle input:checked + .toggle-track { background: #e94560; }
+  .toggle input:checked + .toggle-track::after { transform: translateX(12px); }
+
+  .step-body  { flex: 1; min-width: 0; }
+  .step-label { font-size: 11px; color: #9090b8; line-height: 1.5; cursor: pointer; }
+  .step-label:hover { color: #c0c0e0; }
+
+  .step-num-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px;
+    background: #1e1e30; border-radius: 3px;
+    font-size: 9px; color: #e94560; font-weight: 700;
+    margin-right: 4px; flex-shrink: 0; vertical-align: middle;
+  }
+  .step-url-line { font-size: 10px; color: #3a3a60; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* inline memo edit */
+  .step-memo {
+    margin-top: 4px;
+  }
+  .memo-text {
+    font-size: 10px; color: #606090; font-style: italic;
+    cursor: pointer; padding: 2px 4px; border-radius: 3px;
+    border: 1px solid transparent;
+    transition: border-color 0.15s;
+    display: block; white-space: pre-wrap; word-break: break-all;
+  }
+  .memo-text:hover { border-color: #2a2a4a; color: #8080b0; }
+  .memo-text.empty { color: #363660; }
+  .memo-input {
+    width: 100%; font-size: 10px; font-family: inherit;
+    background: #13131f; color: #c0c0e0;
+    border: 1px solid #3a3a6a; border-radius: 3px;
+    padding: 3px 5px; outline: none; resize: none;
+    line-height: 1.4;
+  }
+
+  .step-action-row { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+  .action-badge {
+    font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px;
+  }
+
+  /* select-all bar */
+  .select-all-bar {
+    padding: 6px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #1a1a28;
+  }
+  .select-all-bar label { font-size: 11px; color: #7070a0; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+  .enabled-count { font-size: 10px; color: #5a5a80; }
+  .enabled-count span { color: #e94560; font-weight: 700; }
+
+  /* ── Edit tab ── */
+  .edit-panel { padding: 12px 16px; }
+  .edit-panel label { font-size: 11px; color: #5a5a80; display: block; margin-bottom: 6px; }
+
+  .file-drop-zone {
+    border: 2px dashed #2a2a4a;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+    background: #0d0d18;
+  }
+  .file-drop-zone:hover, .file-drop-zone.drag-over {
+    border-color: #4a4a8a; background: #13132a;
+  }
+  .file-drop-zone .drop-icon { font-size: 24px; display: block; margin-bottom: 6px; }
+  .file-drop-zone p { font-size: 11px; color: #5a5a80; line-height: 1.5; }
+  .file-drop-zone p strong { color: #9090b8; }
+  #fileInput { display: none; }
+
+  .loaded-info {
+    background: #13132a;
+    border: 1px solid #2a2a4a;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    font-size: 11px;
+    color: #8080b0;
+    display: none;
+    align-items: center; gap: 6px;
+  }
+  .loaded-info.visible { display: flex; }
+  .loaded-info span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .loaded-info button {
+    background: none; border: none; color: #5a5a80; cursor: pointer; font-size: 14px;
+    padding: 0 2px; flex-shrink: 0;
+  }
+  .loaded-info button:hover { color: #e94560; }
+
+  .editor-wrap {
+    position: relative;
+    display: none;
+  }
+  .editor-wrap.visible { display: block; }
+
+  #htmlEditor {
+    width: 100%;
+    height: 220px;
+    background: #0a0a14;
+    color: #c8c8e8;
+    border: 1px solid #2a2a3e;
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    line-height: 1.5;
+    outline: none;
+    resize: vertical;
+    tab-size: 2;
+  }
+  #htmlEditor:focus { border-color: #3a3a6a; }
+
+  .editor-actions {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+  .editor-actions .btn { padding: 8px 10px; font-size: 11px; }
+
+  /* ── Format select (shared bottom) ── */
+  .format-row {
+    padding: 0 16px 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .format-row label { font-size: 11px; color: #5a5a80; white-space: nowrap; }
+  .format-row select {
+    flex: 1; padding: 7px 8px;
+    background: #1e1e30; color: #b0b0d0;
+    border: 1px solid #2a2a3e; border-radius: 5px;
+    font-family: inherit; font-size: 11px; outline: none;
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    padding: 20px 16px;
+    text-align: center; color: #3a3a5a; font-size: 11px; line-height: 1.8;
+  }
+  .empty-state .icon { font-size: 26px; display: block; margin-bottom: 6px; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 10px; left: 50%;
+    transform: translateX(-50%) translateY(50px);
+    background: #1e1e30; color: #b0ffd0;
+    padding: 7px 14px; border-radius: 16px; font-size: 11px;
+    border: 1px solid #2a5a3a; transition: transform 0.3s; pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">📋</div>
+  <div>
+    <h1>操作手順書ジェネレーター</h1>
+    <p>クリック・入力操作を自動キャプチャ</p>
+  </div>
+</div>
+
+<div class="status-bar">
+  <div class="status-indicator">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">待機中</span>
+  </div>
+  <div class="step-count" id="stepCount"></div>
+</div>
+
+<!-- Record controls always visible -->
+<div class="controls" style="padding-bottom:8px">
+  <button class="btn btn-record" id="btnRecord">
+    <span id="recordIcon">⏺</span>
+    <span id="recordLabel">記録を開始する</span>
+  </button>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="manage">📝 ステップ管理</button>
+  <button class="tab-btn" data-tab="edit">📂 読み込み・編集</button>
+  <button class="tab-btn" data-tab="export">⬇ エクスポート</button>
+</div>
+
+<!-- Tab: Manage -->
+<div class="tab-panel active" id="tab-manage">
+  <div class="select-all-bar" id="selectAllBar" style="display:none">
+    <label>
+      <input type="checkbox" id="chkAll" checked>
+      すべて選択
+    </label>
+    <span class="enabled-count" id="enabledCount"></span>
+  </div>
+  <div id="stepsListContainer">
+    <div class="empty-state">
+      <span class="icon">🎬</span>
+      「記録を開始する」を押してから<br>ページを操作してください
+    </div>
+  </div>
+  <div class="controls" style="padding-top:6px">
+    <button class="btn btn-secondary" id="btnClear" disabled>🗑 ステップをすべてクリア</button>
+  </div>
+</div>
+
+<!-- Tab: Edit -->
+<div class="tab-panel" id="tab-edit">
+  <div class="edit-panel">
+    <label>以前に出力した手順書ファイルを読み込む</label>
+
+    <div class="file-drop-zone" id="dropZone">
+      <span class="drop-icon">📄</span>
+      <p><strong>クリックまたはドラッグ＆ドロップ</strong><br>.html / .md ファイルに対応</p>
+    </div>
+    <input type="file" id="fileInput" accept=".html,.md,.htm">
+
+    <div class="loaded-info" id="loadedInfo">
+      <span id="loadedFileName">—</span>
+      <button id="btnCloseFile" title="閉じる">✕</button>
+    </div>
+
+    <div class="editor-wrap" id="editorWrap">
+      <textarea id="htmlEditor" spellcheck="false" placeholder="ファイルを読み込むとここに表示されます..."></textarea>
+      <div class="editor-actions">
+        <button class="btn btn-secondary" id="btnPreview" style="flex:1">👁 プレビュー</button>
+        <button class="btn btn-export"    id="btnSaveEdit" style="flex:1">💾 保存してダウンロード</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Export -->
+<div class="tab-panel" id="tab-export">
+  <div class="format-row" style="padding-top:12px">
+    <label>形式</label>
+    <select id="formatSelect">
+      <option value="markdown">Markdown (.md)</option>
+      <option value="html">HTML (.html)</option>
+    </select>
+  </div>
+  <div class="controls" style="padding-top:0">
+    <button class="btn btn-export" id="btnExport" disabled>⬇ 手順書をエクスポート</button>
+  </div>
+  <div style="padding: 0 16px 12px">
+    <p style="font-size:10px;color:#3a3a60;line-height:1.6">
+      「ステップ管理」タブでオフにしたステップはエクスポートから除外されます。<br>
+      メモを追加した場合は手順書に補足説明として反映されます。
+    </p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="popup.js"></script>
+</body>
+</html>
