@@ -10,6 +10,20 @@ const docCount     = document.getElementById('docCount');
 const navTitleInput = document.getElementById('navTitleInput');
 const toast        = document.getElementById('toast');
 
+// ── Theme toggle ───────────────────────────────────────────────────────
+const btnToggleTheme = document.getElementById('btnToggleTheme');
+let theme = localStorage.getItem('theme') || 'dark';
+function applyTheme() {
+  document.body.classList.toggle('light-mode', theme === 'light');
+  btnToggleTheme.textContent = theme === 'light' ? '🌙' : '☀';
+}
+applyTheme();
+btnToggleTheme.addEventListener('click', () => {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', theme);
+  applyTheme();
+});
+
 // ── State ─────────────────────────────────────────────────────────────
 // docs: [{ title, stepCount, zip (JSZip), enabled, origName }]
 let docs = [];

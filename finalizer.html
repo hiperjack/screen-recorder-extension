@@ -73,6 +73,36 @@
   /* ── Toast ── */
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: #1e1e30; color: #b0ffd0; padding: 8px 18px; border-radius: 20px; font-size: 12px; border: 1px solid #2a5a3a; transition: transform 0.3s; pointer-events: none; white-space: nowrap; z-index: 200; }
   .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Light mode ── */
+  body.light-mode { background: #f5f5f8; color: #1a1a2e; }
+  body.light-mode .toolbar { background: #ffffff; border-bottom-color: #e0e0ea; }
+  body.light-mode .toolbar-title { color: #1a1a2e; }
+  body.light-mode .doc-count { color: #9090b0; }
+  body.light-mode .btn-secondary { background: #ebebf5; color: #3a3a6a; border-color: #d0d0e0; }
+  body.light-mode .btn-secondary:hover { background: #e0e0f0; }
+  body.light-mode .btn-export { background: linear-gradient(135deg, #d0e8f8, #b8d8f0); color: #1a4a7a; border-color: #90c0e0; }
+  body.light-mode .nav-title-row label { color: #9090b0; }
+  body.light-mode .nav-title-input { background: #ffffff; color: #1a1a2e; border-color: #c0c0d8; }
+  body.light-mode .nav-title-input:focus { border-color: #e94560; }
+  body.light-mode .drop-zone { background: #f0f0f8; border-color: #c0c0d8; }
+  body.light-mode .drop-zone:hover, body.light-mode .drop-zone.drag-over { background: #e8e8f5; border-color: #a0a0c8; }
+  body.light-mode .drop-zone p { color: #9090b0; }
+  body.light-mode .drop-zone p strong { color: #5a5a8a; }
+  body.light-mode .btn-add { background: #ebebf5; color: #3a3a6a; border-color: #d0d0e0; }
+  body.light-mode .btn-add:hover { background: #e0e0f0; }
+  body.light-mode .section-header { color: #9090b0; border-bottom-color: #d0d0e0; }
+  body.light-mode .empty-hint { color: #a0a0c0; }
+  body.light-mode .doc-item { background: #ffffff; border-color: #e0e0ea; }
+  body.light-mode .doc-item:hover { border-color: #c0c0d8; }
+  body.light-mode .doc-title-span { color: #1a1a2e; }
+  body.light-mode .doc-title-input { color: #1a1a2e; background: #f5f5f8; border-color: #c0c0d8; }
+  body.light-mode .doc-meta { color: #a0a0c0; }
+  body.light-mode .order-btn { background: #f0f0f8; border-color: #d0d0e0; color: #9090b0; }
+  body.light-mode .order-btn:hover:not(:disabled) { background: #e0e0f0; color: #5a5a8a; }
+  body.light-mode .remove-btn { background: #fdf0f0; border-color: #f0d0d0; color: #c04040; }
+  body.light-mode .remove-btn:hover { background: #fae0e0; }
+  body.light-mode .toast { background: #ffffff; color: #1a6a3a; border-color: #a0d8b0; }
 </style>
 </head>
 <body>
@@ -83,7 +113,8 @@
   <span class="toolbar-title">手順書 最終化</span>
   <div class="toolbar-spacer"></div>
   <span class="doc-count" id="docCount" style="display:none"></span>
-  <button class="btn btn-export" id="btnExport" disabled>💾 ナビゲーションZIPを作成</button>
+  <button class="btn btn-secondary" id="btnToggleTheme" style="padding:6px 12px;font-size:11px" title="テーマ切替">🌙</button>
+  <button class="btn btn-export" id="btnExport" style="padding:6px 12px;font-size:11px" disabled>💾 ナビゲーションZIPを作成</button>
 </div>
 
 <!-- Main area -->

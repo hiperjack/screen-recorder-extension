@@ -92,6 +92,13 @@ function updateExportBtn() {
   btnExport.disabled = steps.filter(s => stepMeta[s.step]?.enabled !== false).length === 0;
 }
 
+// ── Action options ────────────────────────────────────────────────
+const ACTION_OPTS = [
+  { raw: 'click',  label: 'クリック', color: '#e94560' },
+  { raw: 'input',  label: '入力',     color: '#4a9eff' },
+  { raw: 'select', label: '選択',     color: '#50c878' },
+];
+
 // ── Manage tab — step list ────────────────────────────────────────
 function renderStepsList() {
   if (steps.length === 0) {
@@ -108,9 +115,10 @@ function renderStepsList() {
   steps.forEach((s, idx) => {
     const meta    = stepMeta[s.step] || { enabled: true, memo: '' };
     const enabled = meta.enabled !== false;
-    const aLabel  = { click:'クリック', input:'入力', select:'選択' }[s.action] || s.action;
-    const aColor  = { click:'#e94560', input:'#4a9eff', select:'#50c878' }[s.action] || '#888';
-    const aIcon   = { click:'👆', input:'⌨', select:'📋' }[s.action] || '•';
+    const actionRaw = stepMeta[s.step]?.action || s.action;
+    const aLabel  = { click:'クリック', input:'入力', select:'選択' }[actionRaw] || actionRaw;
+    const aColor  = { click:'#e94560', input:'#4a9eff', select:'#50c878' }[actionRaw] || '#888';
+    const aIcon   = { click:'👆', input:'⌨', select:'📋' }[actionRaw] || '•';
     let host = ''; try { host = new URL(s.url).hostname; } catch(_) { host = s.url; }
 
     const row = document.createElement('div');
@@ -125,7 +133,7 @@ function renderStepsList() {
       <div class="step-body">
         <div class="step-action-row">
           <span class="step-num-badge">${s.step}</span>
-          <span class="action-badge" style="background:${aColor}22;color:${aColor};border:1px solid ${aColor}33">${aLabel}</span>
+          <span class="action-badge" style="background:${aColor}22;color:${aColor};border:1px solid ${aColor}33;cursor:pointer" data-id="${s.step}">${aLabel}</span>
         </div>
         <div class="step-label">${aIcon} <span class="element-text" data-id="${s.step}">${escapeHtml(meta.element || s.element)}</span></div>
         <div class="step-url-line">${escapeHtml(host)}</div>
@@ -138,6 +146,7 @@ function renderStepsList() {
   stepsListContainer.innerHTML = '';
   stepsListContainer.appendChild(list);
 
+  list.querySelectorAll('.action-badge').forEach(badge => badge.addEventListener('click', () => startActionEdit(badge)));
   list.querySelectorAll('.order-btn').forEach(btn => {
     btn.addEventListener('click', () => moveStep(parseInt(btn.dataset.id), btn.dataset.dir === 'up' ? -1 : 1));
   });
@@ -162,6 +171,37 @@ function moveStep(id, dir) {
   [steps[idx], steps[swapIdx]] = [steps[swapIdx], steps[idx]];
   chrome.storage.local.set({ steps });
   renderStepsList();
+}
+
+function startActionEdit(badge) {
+  const id = parseInt(badge.dataset.id);
+  const curRaw = stepMeta[id]?.action || steps.find(s => s.step === id)?.action || 'click';
+  const sel = document.createElement('select');
+  sel.className = 'action-select';
+  ACTION_OPTS.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.raw; opt.textContent = a.label;
+    if (a.raw === curRaw) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  badge.replaceWith(sel); sel.focus();
+  const commit = () => {
+    const chosen = ACTION_OPTS.find(a => a.raw === sel.value) || ACTION_OPTS[0];
+    stepMeta[id] = stepMeta[id] || { enabled: true, memo: '' };
+    stepMeta[id].action = chosen.raw;
+    badge.textContent = chosen.label;
+    badge.style.background = `${chosen.color}22`;
+    badge.style.color = chosen.color;
+    badge.style.border = `1px solid ${chosen.color}33`;
+    sel.replaceWith(badge);
+    saveMeta();
+  };
+  sel.addEventListener('change', commit);
+  sel.addEventListener('blur', commit);
+  sel.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { sel.value = curRaw; commit(); }
+  });
 }
 
 function startMemoEdit(span) {
@@ -294,8 +334,9 @@ async function exportZip(activeSteps, baseName) {
     new Date().toLocaleString('ja-JP'),
     activeSteps.length,
     stepDefs.map(({ s, i, memo, screenshotFile }) => {
-      const aLabel   = { click:'クリック', input:'入力', select:'選択' }[s.action] || s.action;
-      const aColor   = { click:'#e94560', input:'#4a9eff', select:'#50c878' }[s.action] || '#888';
+      const actionRaw = stepMeta[s.step]?.action || s.action;
+      const aLabel   = { click:'クリック', input:'入力', select:'選択' }[actionRaw] || actionRaw;
+      const aColor   = { click:'#e94560', input:'#4a9eff', select:'#50c878' }[actionRaw] || '#888';
       const element  = stepMeta[s.step]?.element || s.element;
       return buildStepCardHTML(i, aLabel, aColor, element, s.url, s.value, memo,
         screenshotFile ? `screenshots/${screenshotFile}` : null, showUrl);

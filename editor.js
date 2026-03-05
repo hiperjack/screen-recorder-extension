@@ -19,6 +19,13 @@ const chkShowUrl      = document.getElementById('chkShowUrl');
 const btnExport       = document.getElementById('btnExport');
 const toast           = document.getElementById('toast');
 
+// ── Action options ────────────────────────────────────────────────────
+const ACTION_OPTS = [
+  { label: 'クリック', color: '#e94560' },
+  { label: '入力',     color: '#4a9eff' },
+  { label: '選択',     color: '#50c878' },
+];
+
 // ── State ─────────────────────────────────────────────────────────────
 let importedSteps = [];
 let importedTitle = '操作手順書';
@@ -28,6 +35,20 @@ chkShowUrl.checked = showUrl;
 chkShowUrl.addEventListener('change', () => {
   showUrl = chkShowUrl.checked;
   localStorage.setItem('showUrl', showUrl);
+});
+
+// ── Theme toggle ───────────────────────────────────────────────────────
+const btnToggleTheme = document.getElementById('btnToggleTheme');
+let theme = localStorage.getItem('theme') || 'dark';
+function applyTheme() {
+  document.body.classList.toggle('light-mode', theme === 'light');
+  btnToggleTheme.textContent = theme === 'light' ? '🌙' : '☀';
+}
+applyTheme();
+btnToggleTheme.addEventListener('click', () => {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', theme);
+  applyTheme();
 });
 
 document.getElementById('btnOpenFinalizer').addEventListener('click', () => {
@@ -198,7 +219,7 @@ function renderSteps() {
       </div>
       <div class="step-body">
         <div class="step-row1">
-          <span class="action-badge" style="background:${s.actionColor}22;color:${s.actionColor};border:1px solid ${s.actionColor}33">${esc(s.actionLabel)}</span>
+          <span class="action-badge" style="background:${s.actionColor}22;color:${s.actionColor};border:1px solid ${s.actionColor}33;cursor:pointer" data-idx="${s.idx}">${esc(s.actionLabel)}</span>
           <span class="step-element editable" data-idx="${s.idx}">${esc(s.element)}</span>
         </div>
         <div class="step-url">${esc(host)}</div>
@@ -219,6 +240,7 @@ function renderSteps() {
       updateCount(); updateChkAll();
     });
   });
+  stepsList.querySelectorAll('.action-badge').forEach(badge => badge.addEventListener('click', () => startActionEdit(badge)));
   stepsList.querySelectorAll('.step-element.editable').forEach(el => el.addEventListener('click', () => startElementEdit(el)));
   stepsList.querySelectorAll('.memo-text').forEach(el => el.addEventListener('click', () => startMemoEdit(el)));
   stepsList.querySelectorAll('.thumb-btn-rep, .thumb-btn-add').forEach(btn => {
@@ -240,7 +262,7 @@ function renderSteps() {
     });
   });
   stepsList.querySelectorAll('.step-img').forEach(img => {
-    img.addEventListener('click', () => window.open(img.src, '_blank'));
+    img.addEventListener('click', () => showLightbox(img.src));
   });
   updateCount(); updateChkAll();
 }
@@ -252,6 +274,36 @@ function moveStep(idx, dir) {
   if (swap < 0 || swap >= importedSteps.length) return;
   [importedSteps[pos], importedSteps[swap]] = [importedSteps[swap], importedSteps[pos]];
   renderSteps();
+}
+
+function startActionEdit(badge) {
+  const s = importedSteps.find(x => x.idx === +badge.dataset.idx);
+  if (!s) return;
+  const sel = document.createElement('select');
+  sel.className = 'action-select';
+  ACTION_OPTS.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.label; opt.textContent = a.label;
+    if (a.label === s.actionLabel) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  badge.replaceWith(sel); sel.focus();
+  const commit = () => {
+    const chosen = ACTION_OPTS.find(a => a.label === sel.value) || ACTION_OPTS[0];
+    s.actionLabel = chosen.label;
+    s.actionColor = chosen.color;
+    badge.textContent = s.actionLabel;
+    badge.style.background = `${s.actionColor}22`;
+    badge.style.color = s.actionColor;
+    badge.style.border = `1px solid ${s.actionColor}33`;
+    sel.replaceWith(badge);
+  };
+  sel.addEventListener('change', commit);
+  sel.addEventListener('blur', commit);
+  sel.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { sel.value = s.actionLabel; commit(); }
+  });
 }
 
 function startElementEdit(span) {
@@ -410,6 +462,23 @@ function buildPageHTML(title, now, count, cardsHTML) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
+// ── Lightbox ──────────────────────────────────────────────────────────
+let _lightbox = null;
+function showLightbox(src) {
+  if (!_lightbox) {
+    _lightbox = document.createElement('div');
+    _lightbox.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out';
+    const img = document.createElement('img');
+    img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,0.7)';
+    _lightbox.appendChild(img);
+    _lightbox.addEventListener('click', () => { _lightbox.style.display = 'none'; });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') _lightbox.style.display = 'none'; });
+    document.body.appendChild(_lightbox);
+  }
+  _lightbox.querySelector('img').src = src;
+  _lightbox.style.display = 'flex';
+}
+
 function esc(str) { return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function tryHostname(url) { try { const u = new URL(url); return u.hostname + u.pathname; } catch(_) { return url || ''; } }
 function base64MimeType(d) { return d.match(/data:([^;]+);/)?.[1] || 'image/png'; }
