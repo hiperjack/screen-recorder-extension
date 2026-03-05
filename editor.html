@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>手順書エディター</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: #0f0f13; color: #e8e8f0; }
+
+  /* ── Toolbar ── */
+  .toolbar { position: sticky; top: 0; z-index: 100; background: #1a1a2e; border-bottom: 1px solid #2a2a3e; padding: 10px 24px; display: flex; align-items: center; gap: 10px; }
+  .toolbar-logo { width: 28px; height: 28px; background: linear-gradient(135deg, #e94560, #c62a47); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .toolbar-title { font-size: 13px; font-weight: 700; color: #f0f0ff; margin-right: 4px; white-space: nowrap; }
+  .toolbar-filename { font-size: 11px; color: #7070a0; background: #0d0d18; padding: 3px 8px; border-radius: 4px; border: 1px solid #2a2a3e; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toolbar-spacer { flex: 1; }
+  .enabled-count { font-size: 11px; color: #5a5a80; white-space: nowrap; }
+  .enabled-count span { color: #e94560; font-weight: 700; }
+  .chk-all-label { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #7070a0; cursor: pointer; white-space: nowrap; }
+  .chk-all-label input[type="checkbox"] { accent-color: #e94560; width: 13px; height: 13px; }
+
+  /* ── Buttons ── */
+  .btn { padding: 7px 14px; border: none; border-radius: 6px; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .btn-secondary { background: #1e1e30; color: #b0b0d0; border: 1px solid #2a2a3e; }
+  .btn-secondary:hover { background: #252538; }
+  .btn-export { background: linear-gradient(135deg, #1e3a5f, #0d2137); color: #7ec8e3; border: 1px solid #1e4a6f; }
+  .btn-export:hover:not(:disabled) { background: linear-gradient(135deg, #254873, #12273f); }
+  .btn-export:disabled { opacity: .3; cursor: not-allowed; }
+  .btn-close { background: none; border: none; color: #5a5a80; cursor: pointer; font-size: 16px; padding: 2px 6px; transition: color 0.15s; }
+  .btn-close:hover { color: #e94560; }
+
+  /* ── Toggle (per-step) ── */
+  .toggle { position: relative; flex-shrink: 0; width: 30px; height: 17px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track { position: absolute; inset: 0; background: #2a2a40; border-radius: 9px; cursor: pointer; transition: background 0.2s; }
+  .toggle-track::after { content: ''; position: absolute; width: 13px; height: 13px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+  .toggle input:checked + .toggle-track { background: #e94560; }
+  .toggle input:checked + .toggle-track::after { transform: translateX(13px); }
+
+  /* ── Step reorder ── */
+  .step-order { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+  .order-btn { background: #1a1a2e; border: 1px solid #2a2a3e; color: #4a4a70; cursor: pointer; border-radius: 4px; width: 26px; height: 20px; font-size: 10px; padding: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .order-btn:hover:not(:disabled) { background: #252538; color: #9090b8; border-color: #3a3a5a; }
+  .order-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+  /* ── Load area ── */
+  .load-area { max-width: 560px; margin: 60px auto; padding: 0 24px; }
+  .load-area h2 { font-size: 17px; font-weight: 700; color: #f0f0ff; margin-bottom: 6px; }
+  .load-area p { font-size: 12px; color: #5a5a80; margin-bottom: 22px; }
+  .drop-zone { border: 2px dashed #2a2a4a; border-radius: 12px; padding: 28px; cursor: pointer; transition: all 0.2s; background: #0d0d18; text-align: center; margin-bottom: 10px; }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: #4a4a8a; background: #13132a; }
+  .drop-zone .dz-icon { font-size: 30px; display: block; margin-bottom: 8px; }
+  .drop-zone p { font-size: 12px; color: #5a5a80; }
+  .drop-zone p strong { color: #9090b8; }
+  .or-divider { text-align: center; font-size: 11px; color: #2a2a4a; margin: 10px 0; }
+
+  /* ── Steps ── */
+  .steps-area { max-width: 900px; margin: 0 auto; padding: 24px 24px 60px; }
+  .step-card { background: #13131f; border: 1px solid #1e1e30; border-radius: 10px; margin-bottom: 12px; display: flex; gap: 14px; padding: 14px 16px; transition: border-color 0.15s; }
+  .step-card:hover { border-color: #2a2a4a; }
+  .step-card.disabled { opacity: 0.35; }
+  .step-left { display: flex; flex-direction: column; align-items: center; gap: 10px; flex-shrink: 0; padding-top: 2px; }
+  .step-num { width: 34px; height: 34px; background: linear-gradient(135deg, #e94560, #c62a47); color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .step-body { flex: 1; min-width: 0; }
+  .step-row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 3px; }
+  .action-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+  .step-element { font-size: 13px; font-weight: 500; color: #d0d0f0; }
+  .step-url { font-size: 11px; color: #3a3a60; margin-bottom: 6px; }
+  .memo-text { font-size: 11px; color: #606090; font-style: italic; cursor: pointer; padding: 3px 5px; border-radius: 3px; border: 1px solid transparent; display: inline-block; white-space: pre-wrap; word-break: break-all; }
+  .memo-text:hover { border-color: #2a2a4a; color: #8080b0; }
+  .memo-text.empty { color: #363660; }
+  .memo-input { width: 100%; font-size: 11px; font-family: inherit; background: #0d0d18; color: #c0c0e0; border: 1px solid #3a3a6a; border-radius: 3px; padding: 4px 6px; outline: none; resize: none; line-height: 1.4; margin-top: 2px; display: block; }
+  .step-img-wrap { margin-top: 10px; }
+  .step-img { max-width: 100%; max-height: 240px; border-radius: 6px; border: 1px solid #2a2a3e; cursor: zoom-in; display: block; transition: opacity 0.15s; }
+  .step-img:hover { opacity: 0.85; }
+  .thumb-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .thumb-btn { padding: 4px 10px; border: none; border-radius: 4px; font-size: 10px; font-family: inherit; cursor: pointer; transition: all 0.15s; }
+  .thumb-btn-rep { background: #1e2a3a; color: #7ec8e3; border: 1px solid #2a4a5a; }
+  .thumb-btn-rep:hover { background: #253545; }
+  .thumb-btn-del { background: #2a1010; color: #e06060; border: 1px solid #3a2020; }
+  .thumb-btn-del:hover { background: #351515; }
+  .thumb-btn-add { background: #1a2e1a; color: #7edb9a; border: 1px solid #2a4a2a; }
+  .thumb-btn-add:hover { background: #203820; }
+  .screenshot-input { display: none; }
+
+  /* ── Title edit ── */
+  .title-bar { padding-bottom: 16px; border-bottom: 1px solid #1e1e30; margin-bottom: 16px; }
+  .doc-title-text { font-size: 18px; font-weight: 700; color: #e8e8f8; cursor: pointer; border-bottom: 2px solid transparent; transition: border-color 0.2s; padding-bottom: 1px; }
+  .doc-title-text:hover { border-bottom-color: #e94560; }
+  .doc-title-input { font-size: 18px; font-weight: 700; color: #e8e8f8; background: transparent; border: none; border-bottom: 2px solid #e94560; outline: none; font-family: inherit; width: 100%; padding-bottom: 1px; }
+
+  /* ── Element edit ── */
+  .step-element.editable { cursor: pointer; border-bottom: 1px solid transparent; transition: border-color 0.15s; }
+  .step-element.editable:hover { border-bottom-color: #4a4a8a; }
+  .element-input { font-size: 13px; font-weight: 500; color: #d0d0f0; background: #0d0d18; border: 1px solid #3a3a6a; border-radius: 3px; padding: 2px 6px; outline: none; font-family: inherit; width: 100%; }
+
+  /* ── Toast ── */
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: #1e1e30; color: #b0ffd0; padding: 8px 18px; border-radius: 20px; font-size: 12px; border: 1px solid #2a5a3a; transition: transform 0.3s; pointer-events: none; white-space: nowrap; z-index: 200; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="toolbar-logo">📋</div>
+  <span class="toolbar-title">手順書エディター</span>
+  <span class="toolbar-filename" id="toolbarFilename" style="display:none"></span>
+  <button class="btn-close" id="btnCloseFile" style="display:none" title="閉じる">✕</button>
+  <div class="toolbar-spacer"></div>
+  <span class="enabled-count" id="enabledCount" style="display:none"></span>
+  <label class="chk-all-label" id="chkAllLabel" style="display:none">
+    <input type="checkbox" id="chkAll" checked> すべて選択
+  </label>
+  <label class="chk-all-label" id="chkUrlLabel" style="display:none">
+    <input type="checkbox" id="chkShowUrl" checked> URL表示
+  </label>
+  <button class="btn btn-secondary" id="btnOpenFinalizer" style="padding:6px 12px;font-size:11px">📑 最終化</button>
+  <button class="btn btn-export" id="btnExport" style="display:none" disabled>💾 保存 (.zip)</button>
+</div>
+
+<!-- Load area -->
+<div id="loadArea" class="load-area">
+  <h2>📂 手順書を読み込む</h2>
+  <p>この拡張機能でエクスポートした ZIP ファイルまたはフォルダを選択してください</p>
+  <div class="drop-zone" id="dropZone">
+    <span class="dz-icon">🗂</span>
+    <p><strong>クリックまたはドラッグ＆ドロップ</strong><br>.zip ファイルに対応</p>
+  </div>
+  <input type="file" id="fileInput" accept=".zip" style="display:none">
+  <div class="or-divider">または</div>
+  <button class="btn btn-secondary" id="btnPickFolder" style="width:100%;justify-content:center;padding:12px 14px">
+    📁 フォルダで読み込む（index.html + screenshots/）
+  </button>
+  <input type="file" id="folderInput" webkitdirectory style="display:none">
+</div>
+
+<!-- Steps area -->
+<div id="stepsArea" class="steps-area" style="display:none">
+  <div class="title-bar">
+    <span id="docTitleText" class="doc-title-text"></span>
+  </div>
+  <div id="stepsList"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="jszip.min.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>

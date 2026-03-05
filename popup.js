@@ -1,4 +1,4 @@
-// popup.js — v3: step on/off + memo + imported file step editor with screenshot swap
+// popup.js
 
 // ── DOM ───────────────────────────────────────────────────────────
 const btnRecord    = document.getElementById('btnRecord');
@@ -13,48 +13,58 @@ const stepsListContainer = document.getElementById('stepsListContainer');
 const selectAllBar = document.getElementById('selectAllBar');
 const enabledCount = document.getElementById('enabledCount');
 const chkAll       = document.getElementById('chkAll');
-const formatSelect = document.getElementById('formatSelect');
-const toast        = document.getElementById('toast');
-
-const dropZone          = document.getElementById('dropZone');
-const fileInput         = document.getElementById('fileInput');
-const loadedInfo        = document.getElementById('loadedInfo');
-const loadedFileName    = document.getElementById('loadedFileName');
-const btnCloseFile      = document.getElementById('btnCloseFile');
-const importedStepsWrap = document.getElementById('importedStepsWrap');
-const importedStepsList = document.getElementById('importedStepsList');
-const chkImportAll      = document.getElementById('chkImportAll');
-const importEnabledCount= document.getElementById('importEnabledCount');
-const btnSaveImport     = document.getElementById('btnSaveImport');
+const docTitleInput  = document.getElementById('docTitleInput');
+const chkShowUrl     = document.getElementById('chkShowUrl');
+const toast          = document.getElementById('toast');
 
 // ── State ─────────────────────────────────────────────────────────
-let steps      = [];   // captured steps
-let stepMeta   = {};   // { [stepId]: { enabled, memo } }
+let steps      = [];
+let stepMeta   = {};
 let isRecording= false;
-
-// Imported file state
-let importedSteps = []; // parsed from HTML: { idx, title, actionLabel, actionColor, element, url, value, memo, screenshot, enabled }
-let importedTitle = '操作手順書';
+let docTitle   = '操作手順書';
+let showUrl    = true;
 
 // ── Init ─────────────────────────────────────────────────────────
 async function init() {
-  const stored = await chrome.storage.local.get(['steps','stepMeta','isRecording']);
+  const stored = await chrome.storage.local.get(['steps','stepMeta','isRecording','docTitle','showUrl']);
   steps       = stored.steps    || [];
   stepMeta    = stored.stepMeta || {};
   isRecording = stored.isRecording || false;
+  docTitle    = stored.docTitle || '操作手順書';
+  showUrl     = stored.showUrl !== false;
+  docTitleInput.value = docTitle;
+  chkShowUrl.checked  = showUrl;
   steps.forEach(s => { if (!stepMeta[s.step]) stepMeta[s.step] = { enabled: true, memo: '' }; });
   renderStatus();
   renderStepsList();
 }
 
+docTitleInput.addEventListener('input', async () => {
+  docTitle = docTitleInput.value || '操作手順書';
+  await chrome.storage.local.set({ docTitle });
+});
+
+chkShowUrl.addEventListener('change', async () => {
+  showUrl = chkShowUrl.checked;
+  await chrome.storage.local.set({ showUrl });
+});
+
 // ── Tabs ─────────────────────────────────────────────────────────
-document.querySelectorAll('.tab-btn').forEach(btn => {
+document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
   });
+});
+
+document.getElementById('btnOpenEditor').addEventListener('click', () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL('editor.html') });
+});
+
+document.getElementById('btnOpenFinalizer').addEventListener('click', () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL('finalizer.html') });
 });
 
 // ── Status ────────────────────────────────────────────────────────
@@ -95,7 +105,7 @@ function renderStepsList() {
 
   const list = document.createElement('div');
   list.className = 'steps-list';
-  steps.forEach(s => {
+  steps.forEach((s, idx) => {
     const meta    = stepMeta[s.step] || { enabled: true, memo: '' };
     const enabled = meta.enabled !== false;
     const aLabel  = { click:'クリック', input:'入力', select:'選択' }[s.action] || s.action;
@@ -107,14 +117,19 @@ function renderStepsList() {
     row.className = `step-row${enabled ? '' : ' disabled-row'}`;
     row.dataset.stepId = s.step;
     row.innerHTML = `
+      <div class="step-order">
+        <button class="order-btn" data-id="${s.step}" data-dir="up" ${idx === 0 ? 'disabled' : ''}>↑</button>
+        <button class="order-btn" data-id="${s.step}" data-dir="down" ${idx === steps.length - 1 ? 'disabled' : ''}>↓</button>
+      </div>
       <label class="toggle"><input type="checkbox" class="step-toggle" data-id="${s.step}" ${enabled?'checked':''}><span class="toggle-track"></span></label>
       <div class="step-body">
         <div class="step-action-row">
           <span class="step-num-badge">${s.step}</span>
           <span class="action-badge" style="background:${aColor}22;color:${aColor};border:1px solid ${aColor}33">${aLabel}</span>
         </div>
-        <div class="step-label">${aIcon} ${escapeHtml(s.element)}</div>
+        <div class="step-label">${aIcon} <span class="element-text" data-id="${s.step}">${escapeHtml(meta.element || s.element)}</span></div>
         <div class="step-url-line">${escapeHtml(host)}</div>
+        ${s.value ? `<div class="step-value-line">⌨ ${escapeHtml(s.value)}</div>` : ''}
         <div class="step-memo"><span class="memo-text ${meta.memo?'':'empty'}" data-id="${s.step}">${meta.memo ? escapeHtml(meta.memo) : '＋ メモを追加...'}</span></div>
       </div>`;
     list.appendChild(row);
@@ -123,6 +138,10 @@ function renderStepsList() {
   stepsListContainer.innerHTML = '';
   stepsListContainer.appendChild(list);
 
+  list.querySelectorAll('.order-btn').forEach(btn => {
+    btn.addEventListener('click', () => moveStep(parseInt(btn.dataset.id), btn.dataset.dir === 'up' ? -1 : 1));
+  });
+  list.querySelectorAll('.element-text').forEach(span => span.addEventListener('click', () => startElementEdit(span)));
   list.querySelectorAll('.step-toggle').forEach(chk => {
     chk.addEventListener('change', () => {
       const id = parseInt(chk.dataset.id);
@@ -133,6 +152,16 @@ function renderStepsList() {
     });
   });
   list.querySelectorAll('.memo-text').forEach(span => span.addEventListener('click', () => startMemoEdit(span)));
+}
+
+function moveStep(id, dir) {
+  const idx = steps.findIndex(s => s.step === id);
+  if (idx < 0) return;
+  const swapIdx = idx + dir;
+  if (swapIdx < 0 || swapIdx >= steps.length) return;
+  [steps[idx], steps[swapIdx]] = [steps[swapIdx], steps[idx]];
+  chrome.storage.local.set({ steps });
+  renderStepsList();
 }
 
 function startMemoEdit(span) {
@@ -157,6 +186,30 @@ function startMemoEdit(span) {
   ta.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); }
     if (e.key === 'Escape') { ta.value = meta.memo || ''; commit(); }
+  });
+}
+
+function startElementEdit(span) {
+  const id  = parseInt(span.dataset.id);
+  const cur = stepMeta[id]?.element || steps.find(s => s.step === id)?.element || '';
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.className = 'element-input'; inp.value = cur;
+  span.replaceWith(inp); inp.focus(); inp.select();
+  function commit() {
+    const val = inp.value.trim();
+    stepMeta[id] = stepMeta[id] || { enabled: true, memo: '' };
+    stepMeta[id].element = val || undefined;
+    const ns = document.createElement('span');
+    ns.className = 'element-text'; ns.dataset.id = id;
+    ns.textContent = val || cur;
+    ns.addEventListener('click', () => startElementEdit(ns));
+    inp.replaceWith(ns);
+    saveMeta();
+  }
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { inp.value = cur; commit(); }
   });
 }
 
@@ -212,257 +265,18 @@ chrome.runtime.onMessage.addListener(msg => {
   }
 });
 
-// ── Export (capture steps) ────────────────────────────────────────
+// ── Export (captured steps) ───────────────────────────────────────
 btnExport.addEventListener('click', async () => {
   const active = steps.filter(s => stepMeta[s.step]?.enabled !== false);
   if (!active.length) { showToast('⚠ 出力対象のステップがありません'); return; }
-  const fmt = formatSelect.value;
-  if (fmt === 'html') {
-    await exportZip(active, `手順書_${today()}`);
-  } else {
-    const content = generateMarkdown(active);
-    downloadBlob(content, `手順書_${today()}.md`, 'text/markdown');
-    showToast(`✅ 手順書を保存しました（${active.length} ステップ）`);
-  }
+  await exportZip(active, `手順書_${today()}`);
 });
 
-// ── File import ───────────────────────────────────────────────────
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
-
-function loadFile(file) {
-  const ext = file.name.split('.').pop().toLowerCase();
-  if (!['html','htm'].includes(ext)) { showToast('⚠ .html ファイルを選択してください'); return; }
-  const reader = new FileReader();
-  reader.onload = e => {
-    parseImportedHTML(e.target.result);
-    loadedFileName.textContent = file.name;
-    loadedInfo.classList.add('visible');
-    importedStepsWrap.classList.add('visible');
-    dropZone.style.display = 'none';
-    showToast(`📂 ${file.name} を読み込みました（${importedSteps.length} ステップ）`);
-    renderImportedSteps();
-  };
-  reader.readAsText(file, 'UTF-8');
-}
-
-// Parse the HTML output from this extension
-function parseImportedHTML(html) {
-  const parser = new DOMParser();
-  const doc    = parser.parseFromString(html, 'text/html');
-
-  // Title
-  importedTitle = doc.querySelector('h1')?.textContent?.replace(/^📋\s*/, '').trim() || '操作手順書';
-
-  importedSteps = [];
-  doc.querySelectorAll('.step-card').forEach((card, i) => {
-    const badge     = card.querySelector('.action-badge');
-    const titleEl   = card.querySelector('.step-title');
-    const detailEl  = card.querySelector('.step-detail');
-    const imgEl     = card.querySelector('.step-screenshot img');
-
-    // Extract element name (step-title text minus the badge text)
-    let element = titleEl?.textContent?.trim() || '';
-    if (badge) element = element.replace(badge.textContent.trim(), '').trim();
-
-    // Extract detail spans
-    const spans = detailEl ? [...detailEl.querySelectorAll('span')] : [];
-    let url = '', value = '', memo = '';
-    spans.forEach(sp => {
-      const t = sp.textContent.trim();
-      if (t.startsWith('🌐')) { const a = sp.querySelector('a'); url = a?.href || ''; }
-      else if (t.startsWith('⌨')) value = t.replace(/^⌨\s*入力値:\s*/, '');
-      else if (t.startsWith('💬')) memo = t.replace(/^💬\s*/, '');
-    });
-
-    const actionLabel = badge?.textContent?.trim() || '';
-    const actionColor = badge ? (badge.style.color || '#888') : '#888';
-
-    importedSteps.push({
-      idx: i + 1,
-      actionLabel,
-      actionColor,
-      element,
-      url,
-      value,
-      memo,
-      screenshot: imgEl?.src || null,
-      enabled: true
-    });
-  });
-}
-
-function renderImportedSteps() {
-  importedStepsList.innerHTML = '';
-  updateImportEnabledCount();
-
-  importedSteps.forEach(s => {
-    const row = document.createElement('div');
-    row.className = `step-row${s.enabled ? '' : ' disabled-row'}`;
-    row.dataset.importIdx = s.idx;
-
-    let host = '';
-    try { host = new URL(s.url).hostname; } catch(_) { host = s.url || ''; }
-
-    const thumbHtml = s.screenshot
-      ? `<div class="step-thumb-wrap">
-           <img class="step-thumb" src="${s.screenshot}" alt="step ${s.idx}" title="クリックで拡大">
-           <div class="thumb-actions">
-             <button class="thumb-btn thumb-btn-replace" data-idx="${s.idx}">🔄 差し替え</button>
-             <button class="thumb-btn thumb-btn-remove"  data-idx="${s.idx}">🗑 削除</button>
-           </div>
-         </div>`
-      : `<div class="thumb-actions" style="margin-top:4px">
-           <button class="thumb-btn thumb-btn-add" data-idx="${s.idx}" style="flex:none;width:auto;padding:4px 8px">📷 スクショを追加</button>
-         </div>`;
-
-    row.innerHTML = `
-      <label class="toggle"><input type="checkbox" class="import-toggle" data-idx="${s.idx}" ${s.enabled?'checked':''}><span class="toggle-track"></span></label>
-      <div class="step-body">
-        <div class="step-action-row">
-          <span class="step-num-badge">${s.idx}</span>
-          <span class="action-badge" style="background:${s.actionColor}22;color:${s.actionColor};border:1px solid ${s.actionColor}33">${escapeHtml(s.actionLabel)}</span>
-        </div>
-        <div class="step-label">${escapeHtml(s.element)}</div>
-        <div class="step-url-line">${escapeHtml(host)}</div>
-        <div class="step-memo"><span class="import-memo-text ${s.memo?'':'empty'}" data-idx="${s.idx}">${s.memo ? escapeHtml(s.memo) : '＋ メモを追加...'}</span></div>
-        ${thumbHtml}
-        <input type="file" class="screenshot-input" accept="image/*" data-idx="${s.idx}">
-      </div>`;
-
-    importedStepsList.appendChild(row);
-  });
-
-  // Toggle
-  importedStepsList.querySelectorAll('.import-toggle').forEach(chk => {
-    chk.addEventListener('change', () => {
-      const idx = parseInt(chk.dataset.idx);
-      const s   = importedSteps.find(x => x.idx === idx);
-      if (s) { s.enabled = chk.checked; chk.closest('.step-row').classList.toggle('disabled-row', !chk.checked); }
-      updateImportEnabledCount();
-    });
-  });
-
-  // Memo
-  importedStepsList.querySelectorAll('.import-memo-text').forEach(span => {
-    span.addEventListener('click', () => startImportMemoEdit(span));
-  });
-
-  // Screenshot replace
-  importedStepsList.querySelectorAll('.thumb-btn-replace, .thumb-btn-add').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx   = parseInt(btn.dataset.idx);
-      const input = importedStepsList.querySelector(`.screenshot-input[data-idx="${idx}"]`);
-      input.click();
-    });
-  });
-
-  // Screenshot remove
-  importedStepsList.querySelectorAll('.thumb-btn-remove').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.idx);
-      const s   = importedSteps.find(x => x.idx === idx);
-      if (s) {
-        s.screenshot = null;
-        renderImportedSteps();
-        showToast('🗑 スクリーンショットを削除しました');
-      }
-    });
-  });
-
-  // Screenshot file input
-  importedStepsList.querySelectorAll('.screenshot-input').forEach(input => {
-    input.addEventListener('change', () => {
-      const idx  = parseInt(input.dataset.idx);
-      const file = input.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = e => {
-        const s = importedSteps.find(x => x.idx === idx);
-        if (s) {
-          s.screenshot = e.target.result;
-          renderImportedSteps();
-          showToast('✅ スクリーンショットを差し替えました');
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-  });
-
-  // Thumbnail zoom
-  importedStepsList.querySelectorAll('.step-thumb').forEach(img => {
-    img.addEventListener('click', () => {
-      const blob = dataURLtoBlob(img.src);
-      const url  = URL.createObjectURL(blob);
-      chrome.tabs.create({ url });
-    });
-  });
-}
-
-function startImportMemoEdit(span) {
-  const idx = parseInt(span.dataset.idx);
-  const s   = importedSteps.find(x => x.idx === idx);
-  if (!s) return;
-  const ta = document.createElement('textarea');
-  ta.className = 'memo-input'; ta.value = s.memo || ''; ta.rows = 2;
-  ta.placeholder = 'このステップへのメモ（手順書に反映されます）';
-  span.replaceWith(ta); ta.focus(); ta.select();
-  function commit() {
-    s.memo = ta.value.trim();
-    const ns = document.createElement('span');
-    ns.className = `import-memo-text${s.memo?'':' empty'}`; ns.dataset.idx = idx;
-    ns.textContent = s.memo || '＋ メモを追加...';
-    ns.addEventListener('click', () => startImportMemoEdit(ns));
-    ta.replaceWith(ns);
-  }
-  ta.addEventListener('blur', commit);
-  ta.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); }
-    if (e.key === 'Escape') { ta.value = s.memo || ''; commit(); }
-  });
-}
-
-function updateImportEnabledCount() {
-  const total   = importedSteps.length;
-  const enabled = importedSteps.filter(s => s.enabled).length;
-  importEnabledCount.innerHTML = `<span>${enabled}</span> / ${total} 件 出力対象`;
-}
-
-chkImportAll.addEventListener('change', () => {
-  importedSteps.forEach(s => { s.enabled = chkImportAll.checked; });
-  importedStepsList.querySelectorAll('.import-toggle').forEach(c => { c.checked = chkImportAll.checked; });
-  importedStepsList.querySelectorAll('.step-row').forEach(r => r.classList.toggle('disabled-row', !chkImportAll.checked));
-  updateImportEnabledCount();
-});
-
-btnCloseFile.addEventListener('click', () => {
-  importedSteps = [];
-  loadedInfo.classList.remove('visible');
-  importedStepsWrap.classList.remove('visible');
-  dropZone.style.display = '';
-  fileInput.value = '';
-});
-
-// ── Save imported ─────────────────────────────────────────────────
-btnSaveImport.addEventListener('click', async () => {
-  const active = importedSteps.filter(s => s.enabled);
-  if (!active.length) { showToast('⚠ 出力対象のステップがありません'); return; }
-  const base = (loadedFileName.textContent || '手順書').replace(/\.[^.]+$/, '');
-  await exportImportedZip(active, `${base}_edited`);
-});
-
-// ── ZIP exporters ─────────────────────────────────────────────────
-
-// Captured steps → ZIP
 async function exportZip(activeSteps, baseName) {
   if (typeof JSZip === 'undefined') { showToast('⚠ JSZipの読み込みを待っています...'); return; }
   const zip = new JSZip();
   const screenshotsFolder = zip.folder('screenshots');
 
-  // Assign filenames and strip base64 from steps before HTML gen
   const stepDefs = activeSteps.map((s, i) => {
     const num = String(i + 1).padStart(3, '0');
     const memo = stepMeta[s.step]?.memo || '';
@@ -476,14 +290,15 @@ async function exportZip(activeSteps, baseName) {
   });
 
   const html = buildPageHTML(
-    activeSteps[0]?.title || '操作手順書',
+    docTitle,
     new Date().toLocaleString('ja-JP'),
     activeSteps.length,
     stepDefs.map(({ s, i, memo, screenshotFile }) => {
-      const aLabel = { click:'クリック', input:'入力', select:'選択' }[s.action] || s.action;
-      const aColor = { click:'#e94560', input:'#4a9eff', select:'#50c878' }[s.action] || '#888';
-      return buildStepCardHTML(i, aLabel, aColor, s.element, s.url, s.value, memo,
-        screenshotFile ? `screenshots/${screenshotFile}` : null);
+      const aLabel   = { click:'クリック', input:'入力', select:'選択' }[s.action] || s.action;
+      const aColor   = { click:'#e94560', input:'#4a9eff', select:'#50c878' }[s.action] || '#888';
+      const element  = stepMeta[s.step]?.element || s.element;
+      return buildStepCardHTML(i, aLabel, aColor, element, s.url, s.value, memo,
+        screenshotFile ? `screenshots/${screenshotFile}` : null, showUrl);
     }).join('')
   );
 
@@ -493,55 +308,16 @@ async function exportZip(activeSteps, baseName) {
   showToast(`✅ ${baseName}.zip を保存しました（${activeSteps.length} ステップ）`);
 }
 
-// Imported steps → ZIP
-async function exportImportedZip(activeSteps, baseName) {
-  if (typeof JSZip === 'undefined') { showToast('⚠ JSZipの読み込みを待っています...'); return; }
-  const zip = new JSZip();
-  const screenshotsFolder = zip.folder('screenshots');
-
-  const stepDefs = activeSteps.map((s, i) => {
-    const num = String(i + 1).padStart(3, '0');
-    let screenshotFile = null;
-    if (s.screenshot) {
-      // Could be base64 (newly added/replaced) or a relative path (from original file)
-      if (s.screenshot.startsWith('data:')) {
-        const ext = mimeToExt(base64MimeType(s.screenshot));
-        screenshotFile = `step_${num}.${ext}`;
-        screenshotsFolder.file(screenshotFile, base64ToUint8(s.screenshot));
-      } else {
-        // Keep original path reference as-is (relative path from loaded file)
-        screenshotFile = s.screenshot;
-      }
-    }
-    return { s, i: i + 1, screenshotFile };
-  });
-
-  const html = buildPageHTML(
-    importedTitle,
-    new Date().toLocaleString('ja-JP'),
-    activeSteps.length,
-    stepDefs.map(({ s, i, screenshotFile }) =>
-      buildStepCardHTML(i, s.actionLabel, s.actionColor, s.element, s.url, s.value, s.memo,
-        screenshotFile || null)
-    ).join('')
-  );
-
-  zip.file('index.html', html);
-  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-  downloadBlobDirect(blob, `${baseName}.zip`);
-  showToast(`💾 ${baseName}.zip を保存しました（${activeSteps.length} ステップ）`);
-}
-
 // ── HTML generators ───────────────────────────────────────────────
 function generateMarkdown(activeSteps) {
   const now = new Date().toLocaleString('ja-JP');
-  const title = activeSteps[0]?.title || '操作手順書';
-  let md = `# ${title}\n\n> **作成日時:** ${now}  \n> **総ステップ数:** ${activeSteps.length}\n\n---\n\n`;
+  let md = `# ${docTitle}\n\n> **作成日時:** ${now}  \n> **総ステップ数:** ${activeSteps.length}\n\n---\n\n`;
   activeSteps.forEach((s, i) => {
-    const aLabel = { click:'クリック', input:'入力', select:'選択' }[s.action] || s.action;
-    const memo   = stepMeta[s.step]?.memo || '';
-    md += `## ステップ ${i+1}：${aLabel} — ${s.element}\n\n`;
-    md += `**ページ:** [${tryHostname(s.url)}](${s.url})  \n`;
+    const aLabel   = { click:'クリック', input:'入力', select:'選択' }[s.action] || s.action;
+    const memo     = stepMeta[s.step]?.memo || '';
+    const element  = stepMeta[s.step]?.element || s.element;
+    md += `## ステップ ${i+1}：${aLabel} — ${element}\n\n`;
+    if (showUrl) md += `**ページ:** [${tryHostname(s.url)}](${s.url})  \n`;
     md += `**操作:** ${aLabel} → ${s.element}  \n`;
     if (s.value) md += `**入力値:** \`${s.value}\`  \n`;
     if (memo)    md += `**メモ:** ${memo}  \n`;
@@ -552,27 +328,7 @@ function generateMarkdown(activeSteps) {
   return md;
 }
 
-function generateHTML(activeSteps) {
-  const now = new Date().toLocaleString('ja-JP');
-  const title = activeSteps[0]?.title || '操作手順書';
-  const cardsHTML = activeSteps.map((s, i) => {
-    const aLabel = { click:'クリック', input:'入力', select:'選択' }[s.action] || s.action;
-    const aColor = { click:'#e94560', input:'#4a9eff', select:'#50c878' }[s.action] || '#888';
-    const memo   = stepMeta[s.step]?.memo || '';
-    return buildStepCardHTML(i+1, aLabel, aColor, s.element, s.url, s.value, memo, s.screenshot);
-  }).join('');
-  return buildPageHTML(title, now, activeSteps.length, cardsHTML);
-}
-
-function generateImportedHTML(activeSteps) {
-  const now = new Date().toLocaleString('ja-JP');
-  const cardsHTML = activeSteps.map((s, i) =>
-    buildStepCardHTML(i+1, s.actionLabel, s.actionColor, s.element, s.url, s.value, s.memo, s.screenshot)
-  ).join('');
-  return buildPageHTML(importedTitle, now, activeSteps.length, cardsHTML);
-}
-
-function buildStepCardHTML(num, aLabel, aColor, element, url, value, memo, screenshot) {
+function buildStepCardHTML(num, aLabel, aColor, element, url, value, memo, screenshot, showUrl = true) {
   return `
   <div class="step-card">
     <div class="step-header">
@@ -583,7 +339,7 @@ function buildStepCardHTML(num, aLabel, aColor, element, url, value, memo, scree
           ${escapeHtml(element)}
         </div>
         <div class="step-detail">
-          <span>🌐 <a href="${escapeHtml(url)}" target="_blank">${escapeHtml(tryHostname(url))}</a></span>
+          ${showUrl ? `<span>🌐 <a href="${escapeHtml(url)}" target="_blank">${escapeHtml(tryHostname(url))}</a></span>` : ''}
           ${value ? `<span>⌨ 入力値: <code>${escapeHtml(value)}</code></span>` : ''}
           ${memo  ? `<span>💬 ${escapeHtml(memo)}</span>` : ''}
         </div>
@@ -619,7 +375,6 @@ function buildPageHTML(title, now, count, cardsHTML) {
   .step-detail code{background:#f0f0f5;padding:1px 5px;border-radius:3px;font-family:monospace}
   .step-screenshot{padding:0 20px 20px}
   .step-screenshot img{width:100%;border-radius:8px;border:1px solid #e0e0ea;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-  .footer{text-align:center;color:#aaa;font-size:12px;margin-top:40px;padding-top:20px;border-top:1px solid #e0e0ea}
   @media print{body{background:#fff}.step-card{box-shadow:none;page-break-inside:avoid}}
 </style>
 </head>
@@ -628,7 +383,6 @@ function buildPageHTML(title, now, count, cardsHTML) {
   <h1>📋 ${escapeHtml(title)}</h1>
   <div class="meta"><span>📅 作成日時: ${now}</span><span>📌 総ステップ数: ${count}</span></div>
   ${cardsHTML}
-  <div class="footer">このドキュメントは「操作手順書ジェネレーター」Chrome拡張機能で自動生成されました</div>
 </div>
 </body>
 </html>`;
@@ -647,10 +401,6 @@ function base64ToUint8(dataURL) {
   const arr    = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
   return arr;
-}
-function dataURLtoBlob(dataURL) {
-  const mime = base64MimeType(dataURL);
-  return new Blob([base64ToUint8(dataURL)], { type: mime });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────

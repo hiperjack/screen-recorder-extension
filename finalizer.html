@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>手順書 最終化</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: #0f0f13; color: #e8e8f0; }
+
+  /* ── Toolbar ── */
+  .toolbar { position: sticky; top: 0; z-index: 100; background: #1a1a2e; border-bottom: 1px solid #2a2a3e; padding: 10px 24px; display: flex; align-items: center; gap: 10px; }
+  .toolbar-logo { width: 28px; height: 28px; background: linear-gradient(135deg, #e94560, #c62a47); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .toolbar-title { font-size: 13px; font-weight: 700; color: #f0f0ff; white-space: nowrap; }
+  .toolbar-spacer { flex: 1; }
+  .btn { padding: 7px 14px; border: none; border-radius: 6px; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .btn-export { background: linear-gradient(135deg, #1e3a5f, #0d2137); color: #7ec8e3; border: 1px solid #1e4a6f; }
+  .btn-export:hover:not(:disabled) { background: linear-gradient(135deg, #254873, #12273f); }
+  .btn-export:disabled { opacity: .3; cursor: not-allowed; }
+  .doc-count { font-size: 11px; color: #5a5a80; white-space: nowrap; }
+  .doc-count span { color: #e94560; font-weight: 700; }
+
+  /* ── Main area ── */
+  .main-area { max-width: 760px; margin: 0 auto; padding: 32px 24px 60px; }
+
+  /* ── Nav title row ── */
+  .nav-title-row { margin-bottom: 28px; }
+  .nav-title-row label { font-size: 11px; color: #5a5a80; display: block; margin-bottom: 6px; }
+  .nav-title-input { width: 100%; padding: 9px 12px; background: #1a1a2e; color: #e0e0f0; border: 1px solid #2a2a3e; border-radius: 6px; font-family: inherit; font-size: 14px; font-weight: 700; outline: none; transition: border-color 0.2s; }
+  .nav-title-input:focus { border-color: #e94560; }
+
+  /* ── Drop zone ── */
+  .drop-zone { border: 2px dashed #2a2a4a; border-radius: 12px; padding: 28px; cursor: pointer; transition: all 0.2s; background: #0d0d18; text-align: center; margin-bottom: 10px; }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: #4a4a8a; background: #13132a; }
+  .drop-zone .dz-icon { font-size: 30px; display: block; margin-bottom: 8px; }
+  .drop-zone p { font-size: 12px; color: #5a5a80; }
+  .drop-zone p strong { color: #9090b8; }
+  .btn-add { width: 100%; padding: 10px 14px; background: #1e1e30; color: #b0b0d0; border: 1px solid #2a2a3e; border-radius: 6px; font-family: inherit; font-size: 12px; cursor: pointer; transition: all 0.2s; margin-bottom: 24px; }
+  .btn-add:hover { background: #252538; }
+
+  /* ── Section header ── */
+  .section-header { font-size: 11px; color: #4a4a70; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding-bottom: 8px; border-bottom: 1px solid #1e1e30; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+  .empty-hint { text-align: center; padding: 28px; color: #3a3a5a; font-size: 12px; }
+
+  /* ── Doc item ── */
+  .doc-item { background: #13131f; border: 1px solid #1e1e30; border-radius: 10px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; transition: border-color 0.15s; }
+  .doc-item:hover { border-color: #2a2a4a; }
+  .doc-item.disabled { opacity: 0.38; }
+
+  /* ── Toggle ── */
+  .toggle { position: relative; flex-shrink: 0; width: 30px; height: 17px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track { position: absolute; inset: 0; background: #2a2a40; border-radius: 9px; cursor: pointer; transition: background 0.2s; }
+  .toggle-track::after { content: ''; position: absolute; width: 13px; height: 13px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+  .toggle input:checked + .toggle-track { background: #e94560; }
+  .toggle input:checked + .toggle-track::after { transform: translateX(13px); }
+
+  .doc-num-badge { width: 28px; height: 28px; background: linear-gradient(135deg, #e94560, #c62a47); color: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+  .doc-body { flex: 1; min-width: 0; }
+  .doc-title-span { font-size: 13px; font-weight: 500; color: #d0d0f0; cursor: pointer; border-bottom: 1px solid transparent; transition: border-color 0.15s; display: inline-block; }
+  .doc-title-span:hover { border-bottom-color: #4a4a8a; }
+  .doc-title-input { font-size: 13px; font-weight: 500; color: #d0d0f0; background: #0d0d18; border: 1px solid #3a3a6a; border-radius: 3px; padding: 2px 6px; outline: none; font-family: inherit; width: 100%; }
+  .doc-meta { font-size: 10px; color: #3a3a60; margin-top: 2px; }
+
+  .doc-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .order-btn { background: #1a1a2e; border: 1px solid #2a2a3e; color: #4a4a70; cursor: pointer; border-radius: 4px; width: 26px; height: 24px; font-size: 11px; padding: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .order-btn:hover:not(:disabled) { background: #252538; color: #9090b8; border-color: #3a3a5a; }
+  .order-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+  .remove-btn { background: #2a1010; border: 1px solid #3a2020; color: #e06060; cursor: pointer; border-radius: 4px; width: 26px; height: 24px; font-size: 14px; padding: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .remove-btn:hover { background: #351515; }
+
+  /* ── Toast ── */
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: #1e1e30; color: #b0ffd0; padding: 8px 18px; border-radius: 20px; font-size: 12px; border: 1px solid #2a5a3a; transition: transform 0.3s; pointer-events: none; white-space: nowrap; z-index: 200; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="toolbar-logo">📑</div>
+  <span class="toolbar-title">手順書 最終化</span>
+  <div class="toolbar-spacer"></div>
+  <span class="doc-count" id="docCount" style="display:none"></span>
+  <button class="btn btn-export" id="btnExport" disabled>💾 ナビゲーションZIPを作成</button>
+</div>
+
+<!-- Main area -->
+<div class="main-area">
+  <div class="nav-title-row">
+    <label>ナビゲーションのタイトル</label>
+    <input type="text" id="navTitleInput" class="nav-title-input" value="操作手順書" placeholder="手順書のタイトル">
+  </div>
+
+  <div class="drop-zone" id="dropZone">
+    <span class="dz-icon">📂</span>
+    <p><strong>クリックまたはドラッグ＆ドロップ</strong><br>手順書 ZIP ファイル（複数可）をここに追加</p>
+  </div>
+  <input type="file" id="fileInput" accept=".zip" multiple style="display:none">
+  <button class="btn-add" id="btnAdd">＋ ZIPファイルを追加</button>
+
+  <div class="section-header">
+    <span>読み込んだ手順書</span>
+  </div>
+  <div id="docList">
+    <div class="empty-hint">手順書 ZIP をドロップするか、「＋ ZIPファイルを追加」で追加してください</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="jszip.min.js"></script>
+<script src="finalizer.js"></script>
+</body>
+</html>

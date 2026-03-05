@@ -42,14 +42,13 @@
 
   .controls { padding: 12px 16px; display: flex; flex-direction: column; gap: 7px; }
 
-  /* ── Step list (shared style) ── */
-  .steps-list, .imported-steps-list {
-    max-height: 260px; overflow-y: auto;
-    margin: 0 16px 12px; border: 1px solid #1e1e30; border-radius: 8px; background: #0d0d18;
+  /* ── Step list ── */
+  .steps-list {
+    max-height: 220px; overflow-y: auto;
+    margin: 0 16px 0; border: 1px solid #1e1e30; border-radius: 8px; background: #0d0d18;
   }
-  .imported-steps-list { margin: 0 0 10px; max-height: 300px; }
-  .steps-list::-webkit-scrollbar, .imported-steps-list::-webkit-scrollbar { width: 4px; }
-  .steps-list::-webkit-scrollbar-thumb, .imported-steps-list::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 2px; }
+  .steps-list::-webkit-scrollbar { width: 4px; }
+  .steps-list::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 2px; }
 
   .step-row { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #151525; transition: background 0.15s; }
   .step-row:last-child { border-bottom: none; }
@@ -66,6 +65,7 @@
   .step-label { font-size: 11px; color: #9090b8; line-height: 1.5; }
   .step-num-badge { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; background: #1e1e30; border-radius: 3px; font-size: 9px; color: #e94560; font-weight: 700; margin-right: 4px; flex-shrink: 0; vertical-align: middle; }
   .step-url-line { font-size: 10px; color: #3a3a60; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .step-value-line { font-size: 10px; color: #7ec8e3; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .step-action-row { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
   .action-badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
 
@@ -74,49 +74,30 @@
   .memo-text:hover { border-color: #2a2a4a; color: #8080b0; }
   .memo-text.empty { color: #363660; }
   .memo-input { width: 100%; font-size: 10px; font-family: inherit; background: #13131f; color: #c0c0e0; border: 1px solid #3a3a6a; border-radius: 3px; padding: 3px 5px; outline: none; resize: none; line-height: 1.4; }
+  .element-text { cursor: pointer; border-radius: 2px; border: 1px solid transparent; transition: border-color 0.15s; }
+  .element-text:hover { border-color: #2a2a4a; color: #c0c0e8; }
+  .element-input { width: 100%; font-size: 11px; font-family: inherit; background: #0d0d18; color: #c0c0e0; border: 1px solid #3a3a6a; border-radius: 3px; padding: 2px 4px; outline: none; }
 
-  /* Screenshot thumbnail */
-  .step-thumb-wrap { margin-top: 6px; }
-  .step-thumb { width: 100%; border-radius: 4px; border: 1px solid #2a2a3e; display: block; cursor: zoom-in; opacity: 0.85; transition: opacity 0.15s; }
-  .step-thumb:hover { opacity: 1; }
-  .thumb-actions { display: flex; gap: 4px; margin-top: 4px; }
-  .thumb-btn { flex: 1; padding: 4px 6px; border: none; border-radius: 4px; font-size: 10px; font-family: inherit; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 3px; }
-  .thumb-btn-replace { background: #1e2a3a; color: #7ec8e3; border: 1px solid #2a4a5a; }
-  .thumb-btn-replace:hover { background: #253545; }
-  .thumb-btn-remove  { background: #2a1010; color: #e06060; border: 1px solid #3a2020; }
-  .thumb-btn-remove:hover { background: #351515; }
-  .thumb-btn-add     { background: #1a2e1a; color: #7edb9a; border: 1px solid #2a4a2a; }
-  .thumb-btn-add:hover { background: #203820; }
-  .screenshot-input  { display: none; }
+  .step-order { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+  .order-btn { background: #13131f; border: 1px solid #1e1e2e; color: #3a3a60; cursor: pointer; border-radius: 3px; width: 16px; height: 14px; font-size: 9px; padding: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; line-height: 1; }
+  .order-btn:hover:not(:disabled) { background: #1e1e30; color: #8080b0; border-color: #2a2a4a; }
+  .order-btn:disabled { opacity: 0.2; cursor: not-allowed; }
 
   .select-all-bar { padding: 6px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1a1a28; }
-  .import-select-bar { padding: 6px 0; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1a1a28; margin-bottom: 2px; }
-  .select-all-bar label, .import-select-bar label { font-size: 11px; color: #7070a0; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+  .select-all-bar label { font-size: 11px; color: #7070a0; cursor: pointer; display: flex; align-items: center; gap: 5px; }
   .enabled-count { font-size: 10px; color: #5a5a80; }
   .enabled-count span { color: #e94560; font-weight: 700; }
 
-  /* Edit tab */
-  .edit-panel { padding: 12px 16px; }
-  .edit-panel > label { font-size: 11px; color: #5a5a80; display: block; margin-bottom: 6px; }
-  .file-drop-zone { border: 2px dashed #2a2a4a; border-radius: 8px; padding: 18px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 10px; background: #0d0d18; }
-  .file-drop-zone:hover, .file-drop-zone.drag-over { border-color: #4a4a8a; background: #13132a; }
-  .file-drop-zone .drop-icon { font-size: 22px; display: block; margin-bottom: 5px; }
-  .file-drop-zone p { font-size: 11px; color: #5a5a80; line-height: 1.5; }
-  .file-drop-zone p strong { color: #9090b8; }
-  #fileInput { display: none; }
-  .loaded-info { background: #13132a; border: 1px solid #2a2a4a; border-radius: 6px; padding: 7px 10px; margin-bottom: 10px; font-size: 11px; color: #8080b0; display: none; align-items: center; gap: 6px; }
-  .loaded-info.visible { display: flex; }
-  .loaded-info span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .loaded-info button { background: none; border: none; color: #5a5a80; cursor: pointer; font-size: 14px; padding: 0 2px; }
-  .loaded-info button:hover { color: #e94560; }
-  .imported-steps-wrap { display: none; }
-  .imported-steps-wrap.visible { display: block; }
-  .import-actions { display: flex; gap: 6px; margin-top: 2px; }
-  .import-actions .btn { padding: 9px 10px; font-size: 11px; }
-
-  .format-row { padding: 0 16px 10px; display: flex; align-items: center; gap: 8px; }
-  .format-row label { font-size: 11px; color: #5a5a80; white-space: nowrap; }
-  .format-row select { flex: 1; padding: 7px 8px; background: #1e1e30; color: #b0b0d0; border: 1px solid #2a2a3e; border-radius: 5px; font-family: inherit; font-size: 11px; outline: none; }
+  /* ── Export settings (inside manage tab) ── */
+  .export-settings { border-top: 1px solid #1a1a28; padding: 10px 16px 4px; }
+  .setting-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .setting-row label:first-child { font-size: 11px; color: #5a5a80; white-space: nowrap; min-width: 52px; }
+  .setting-row input[type="text"] { flex: 1; padding: 6px 8px; background: #1e1e30; color: #e0e0f0; border: 1px solid #2a2a3e; border-radius: 5px; font-family: inherit; font-size: 11px; outline: none; }
+  .setting-row input[type="text"]:focus { border-color: #3a3a6a; }
+  .chk-label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 11px; color: #b0b0d0; }
+  .chk-label input[type="checkbox"] { accent-color: #e94560; }
+  .btn-row { display: flex; gap: 8px; padding-bottom: 10px; }
+  .btn-row .btn { flex: 1; width: auto; padding: 9px 10px; font-size: 11px; }
 
   .empty-state { padding: 20px 16px; text-align: center; color: #3a3a5a; font-size: 11px; line-height: 1.8; }
   .empty-state .icon { font-size: 26px; display: block; margin-bottom: 6px; }
@@ -152,8 +133,8 @@
 
 <div class="tabs">
   <button class="tab-btn active" data-tab="manage">📝 ステップ管理</button>
-  <button class="tab-btn" data-tab="edit">📂 読み込み・編集</button>
-  <button class="tab-btn" data-tab="export">⬇ エクスポート</button>
+  <button class="tab-btn" id="btnOpenEditor">📂 読み込み・編集</button>
+  <button class="tab-btn" id="btnOpenFinalizer">📑 最終化</button>
 </div>
 
 <!-- Tab: Manage -->
@@ -168,63 +149,27 @@
       「記録を開始する」を押してから<br>ページを操作してください
     </div>
   </div>
-  <div class="controls" style="padding-top:6px">
-    <button class="btn btn-secondary" id="btnClear" disabled>🗑 ステップをすべてクリア</button>
-  </div>
-</div>
 
-<!-- Tab: Edit -->
-<div class="tab-panel" id="tab-edit">
-  <div class="edit-panel">
-    <label>以前に出力した手順書ファイルを読み込んで編集する</label>
-    <div class="file-drop-zone" id="dropZone">
-      <span class="drop-icon">📄</span>
-      <p><strong>クリックまたはドラッグ＆ドロップ</strong><br>この拡張機能で出力した .html ファイルに対応</p>
+  <div class="export-settings">
+    <div class="setting-row">
+      <label>タイトル</label>
+      <input type="text" id="docTitleInput" placeholder="操作手順書">
     </div>
-    <input type="file" id="fileInput" accept=".html,.htm">
-
-    <div class="loaded-info" id="loadedInfo">
-      <span id="loadedFileName">—</span>
-      <button id="btnCloseFile" title="閉じる">✕</button>
+    <div class="setting-row">
+      <label>URL表示</label>
+      <label class="chk-label">
+        <input type="checkbox" id="chkShowUrl" checked> 表示する
+      </label>
     </div>
-
-    <div class="imported-steps-wrap" id="importedStepsWrap">
-      <div class="import-select-bar">
-        <label><input type="checkbox" id="chkImportAll" checked> すべて選択</label>
-        <span class="enabled-count" id="importEnabledCount"></span>
-      </div>
-      <div class="imported-steps-list" id="importedStepsList"></div>
-      <div class="import-actions">
-        <button class="btn btn-export" id="btnSaveImport">💾 HTMLで保存</button>
-      </div>
-      <p style="font-size:10px;color:#3a3a60;line-height:1.6;margin-top:8px">
-        オフにしたステップは保存から除外されます。スクショはサムネイル下のボタンで差し替え・削除できます。
-      </p>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="btnClear" disabled>🗑 クリア</button>
+      <button class="btn btn-export" id="btnExport" disabled>⬇ エクスポート</button>
     </div>
-  </div>
-</div>
-
-<!-- Tab: Export -->
-<div class="tab-panel" id="tab-export">
-  <div class="format-row" style="padding-top:12px">
-    <label>形式</label>
-    <select id="formatSelect">
-      <option value="html">HTML + 画像ZIP (.zip)</option>
-      <option value="markdown">Markdown (.md)</option>
-    </select>
-  </div>
-  <div class="controls" style="padding-top:0">
-    <button class="btn btn-export" id="btnExport" disabled>⬇ 手順書をエクスポート</button>
-  </div>
-  <div style="padding: 0 16px 12px">
-    <p style="font-size:10px;color:#3a3a60;line-height:1.6">
-      HTMLモードは <code>index.html</code> + <code>screenshots/</code> フォルダをZIPで出力します。「ステップ管理」でオフにしたステップは除外されます。
-    </p>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="jszip.min.js"></script>
 <script src="popup.js"></script>
 </body>
 </html>

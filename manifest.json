@@ -10,8 +10,7 @@
     "tabs"
   ],
   "host_permissions": [
-    "<all_urls>",
-    "https://cdnjs.cloudflare.com/*"
+    "<all_urls>"
   ],
   "action": {
     "default_popup": "popup.html",
