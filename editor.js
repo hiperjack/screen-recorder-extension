@@ -264,7 +264,30 @@ function renderSteps() {
   stepsList.querySelectorAll('.step-img').forEach(img => {
     img.addEventListener('click', () => showLightbox(img.src));
   });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn-add-step';
+  addBtn.textContent = '＋ 新規ステップを追加';
+  addBtn.addEventListener('click', addNewStep);
+  stepsList.appendChild(addBtn);
+
   updateCount(); updateChkAll();
+}
+
+function addNewStep() {
+  const newIdx = importedSteps.length > 0 ? Math.max(...importedSteps.map(s => s.idx)) + 1 : 1;
+  importedSteps.push({
+    idx: newIdx,
+    actionLabel: 'クリック',
+    actionColor: '#e94560',
+    element: '',
+    url: '', value: '', memo: '',
+    screenshot: null,
+    enabled: true,
+  });
+  renderSteps();
+  showToast('✅ 新規ステップを追加しました');
+  stepsList.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function moveStep(idx, dir) {
