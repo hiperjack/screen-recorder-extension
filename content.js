@@ -153,6 +153,7 @@
     if (!isRecording) return;
     const el = e.target;
     if (!['INPUT', 'TEXTAREA'].includes(el.tagName)) return;
+    if (el.type === 'password') return;
     clearTimeout(inputTimer);
     inputTimer = setTimeout(() => {
       captureStep('input', el, { value: el.value });

@@ -776,7 +776,7 @@ function buildStepCardHTML(num, aLabel, aColor, element, url, value, memo, scree
           ${esc(element)}
         </div>
         <div class="step-detail">
-          ${showUrl ? `<span>🌐 <a href="${esc(url)}" target="_blank">${esc(tryHostname(url))}</a></span>` : ''}
+          ${showUrl ? `<span>🌐 <a href="${esc(safeUrl(url))}" target="_blank" rel="noopener noreferrer">${esc(tryHostname(url))}</a></span>` : ''}
           ${value ? `<span>⌨ 入力値: <code>${esc(value)}</code></span>` : ''}
           ${memo  ? `<span>💬 ${esc(memo)}</span>` : ''}
         </div>
@@ -906,6 +906,7 @@ async function loadFromRecording() {
 function formatDatetime() { const d = new Date(), p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}`; }
 function esc(str) { return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function tryHostname(url) { try { const u = new URL(url); return u.hostname + u.pathname; } catch(_) { return url || ''; } }
+function safeUrl(url) { return /^https?:\/\//i.test(url) ? url : '#'; }
 function base64MimeType(d) { return d.match(/data:([^;]+);/)?.[1] || 'image/png'; }
 function mimeToExt(m) { return {'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/gif':'gif'}[m] || 'png'; }
 function base64ToUint8(d) { const b = atob(d.split(',')[1]), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
