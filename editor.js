@@ -16,7 +16,8 @@ const chkAllLabel     = document.getElementById('chkAllLabel');
 const chkAll          = document.getElementById('chkAll');
 const chkUrlLabel     = document.getElementById('chkUrlLabel');
 const chkShowUrl      = document.getElementById('chkShowUrl');
-const btnExport       = document.getElementById('btnExport');
+const btnExport          = document.getElementById('btnExport');
+const btnPreviewViewer   = document.getElementById('btnPreviewViewer');
 const toast           = document.getElementById('toast');
 
 // ── Action options ────────────────────────────────────────────────────
@@ -193,7 +194,7 @@ function showLoadedUI(name) {
   toolbarFilename.textContent = name; toolbarFilename.style.display = '';
   btnCloseFile.style.display = ''; enabledCount.style.display = '';
   chkAllLabel.style.display = ''; chkUrlLabel.style.display = '';
-  btnExport.style.display = '';
+  btnExport.style.display = ''; btnPreviewViewer.style.display = '';
   loadArea.style.display = 'none'; stepsArea.style.display = '';
   docTitleText.textContent = importedTitle;
   showToast(`📂 ${name} を読み込みました（${importedSteps.length} ステップ）`);
@@ -237,7 +238,7 @@ btnCloseFile.addEventListener('click', async () => {
   importedSteps = [];
   toolbarFilename.style.display = 'none'; btnCloseFile.style.display = 'none';
   enabledCount.style.display = 'none'; chkAllLabel.style.display = 'none';
-  chkUrlLabel.style.display = 'none'; btnExport.style.display = 'none';
+  chkUrlLabel.style.display = 'none'; btnExport.style.display = 'none'; btnPreviewViewer.style.display = 'none';
   loadArea.style.display = ''; stepsArea.style.display = 'none';
   stepsList.innerHTML = ''; fileInput.value = '';
 });
@@ -533,6 +534,44 @@ chkAll.addEventListener('change', () => {
   updateCount();
 });
 
+// ── Preview in viewer ─────────────────────────────────────────────────
+btnPreviewViewer.addEventListener('click', async () => {
+  const active = importedSteps.filter(s => s.enabled);
+  if (!active.length) { showToast('⚠ 出力対象のステップがありません'); return; }
+  if (typeof JSZip === 'undefined') { showToast('⚠ JSZip の読み込みを待っています...'); return; }
+  showToast('⏳ 照会モードを準備中...');
+  try {
+    const zip = new JSZip();
+    const shots = zip.folder('screenshots');
+    const now = new Date().toLocaleString('ja-JP');
+    const cardsHTML = active.map((s, i) => {
+      const num = String(i + 1).padStart(3, '0');
+      let screenshotSrc = null;
+      if (s.screenshot) {
+        if (s.screenshot.startsWith('data:')) {
+          const fname = `step_${num}.${mimeToExt(base64MimeType(s.screenshot))}`;
+          shots.file(fname, base64ToUint8(s.screenshot));
+          screenshotSrc = `screenshots/${fname}`;
+        } else {
+          screenshotSrc = s.screenshot;
+        }
+      }
+      return buildStepCardHTML(i + 1, s.actionLabel, s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
+    }).join('');
+    zip.file('index.html', buildPageHTML(importedTitle, now, active.length, cardsHTML));
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    const blobUrl = URL.createObjectURL(blob);
+    const viewerBase = chrome.runtime?.getURL ? chrome.runtime.getURL('viewer.html') : 'viewer.html';
+    const viewerUrl = `${viewerBase}?zipUrl=${encodeURIComponent(blobUrl)}&filename=${encodeURIComponent(importedTitle + '.zip')}`;
+    window.open(viewerUrl, '_blank');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    showToast('✅ 照会モードを開きました');
+  } catch (err) {
+    showToast('⚠ 照会モードを開けませんでした');
+    console.error(err);
+  }
+});
+
 // ── Export ────────────────────────────────────────────────────────────
 btnExport.addEventListener('click', async () => {
   const active = importedSteps.filter(s => s.enabled);
@@ -616,8 +655,11 @@ function buildPageHTML(title, now, count, cardsHTML) {
   .step-detail a{color:#4a9eff;text-decoration:none}
   .step-detail code{background:#f0f0f5;padding:1px 5px;border-radius:3px;font-family:monospace}
   .step-screenshot{padding:0 20px 20px}
-  .step-screenshot img{width:100%;border-radius:8px;border:1px solid #e0e0ea;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-  @media print{body{background:#fff}.step-card{box-shadow:none;page-break-inside:avoid}}
+  .step-screenshot img{width:100%;border-radius:8px;border:1px solid #e0e0ea;box-shadow:0 2px 12px rgba(0,0,0,.08);cursor:zoom-in}
+  .lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
+  .lb.open{display:flex}
+  .lb img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.8)}
+  @media print{body{background:#fff}.step-card{box-shadow:none;page-break-inside:avoid}.lb{display:none!important}}
 </style>
 </head>
 <body>
@@ -626,6 +668,13 @@ function buildPageHTML(title, now, count, cardsHTML) {
   <div class="meta"><span>📅 作成日時: ${now}</span><span>📌 総ステップ数: ${count}</span></div>
   ${cardsHTML}
 </div>
+<div class="lb" id="lb" onclick="this.classList.remove('open')"><img id="lbImg" alt=""></div>
+<script>
+document.querySelectorAll('.step-screenshot img').forEach(function(img){
+  img.addEventListener('click',function(){document.getElementById('lbImg').src=this.src;document.getElementById('lb').classList.add('open');});
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')document.getElementById('lb').classList.remove('open');});
+</script>
 </body>
 </html>`;
 }

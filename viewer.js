@@ -153,6 +153,29 @@ async function renderZip(zip, name) {
       });
       // Activate first link
       d.querySelector('.doc-link[data-src]')?.classList.add('active');
+
+      // Lightbox in nav page (position:fixed covers full viewport including sidebar)
+      const lb = d.createElement('div');
+      lb.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;align-items:center;justify-content:center;padding:24px;cursor:zoom-out';
+      const lbImg = d.createElement('img');
+      lbImg.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.8)';
+      lb.appendChild(lbImg);
+      lb.addEventListener('click', () => { lb.style.display = 'none'; });
+      d.addEventListener('keydown', e => { if (e.key === 'Escape') lb.style.display = 'none'; });
+      d.body.appendChild(lb);
+
+      // Wire lightbox for images inside docFrame (re-runs on each navigation)
+      const docFrame = d.getElementById('docFrame');
+      function wireDocLightbox() {
+        const dd = docFrame?.contentDocument;
+        if (!dd) return;
+        dd.querySelectorAll('.step-screenshot img').forEach(img => {
+          img.style.cursor = 'zoom-in';
+          img.addEventListener('click', () => { lbImg.src = img.src; lb.style.display = 'flex'; });
+        });
+        dd.addEventListener('keydown', e => { if (e.key === 'Escape') lb.style.display = 'none'; });
+      }
+      if (docFrame) docFrame.addEventListener('load', wireDocLightbox);
     }, { once: true });
 
     contentFrame.src = htmlUrl;
@@ -185,6 +208,24 @@ async function renderZip(zip, name) {
 
   const htmlUrl = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
   blobUrls.push(htmlUrl);
+
+  // Wire lightbox after iframe loads (CSP blocks inline scripts in blob URL docs)
+  contentFrame.addEventListener('load', () => {
+    const d = contentFrame.contentDocument;
+    if (!d) return;
+    const lb = d.createElement('div');
+    lb.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;align-items:center;justify-content:center;padding:24px;cursor:zoom-out';
+    const lbImg = d.createElement('img');
+    lbImg.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.8)';
+    lb.appendChild(lbImg);
+    lb.addEventListener('click', () => { lb.style.display = 'none'; });
+    d.body.appendChild(lb);
+    d.querySelectorAll('.step-screenshot img').forEach(img => {
+      img.style.cursor = 'zoom-in';
+      img.addEventListener('click', () => { lbImg.src = img.src; lb.style.display = 'flex'; });
+    });
+    d.addEventListener('keydown', e => { if (e.key === 'Escape') lb.style.display = 'none'; });
+  }, { once: true });
 
   contentFrame.src = htmlUrl;
   contentFrame.style.display = '';

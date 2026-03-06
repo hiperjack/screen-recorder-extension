@@ -249,7 +249,6 @@ async function exportMasterZip(allDocs) {
     const firstDocSrc = firstDoc ? `${firstDoc._prefix}/index.html` : '';
 
     masterZip.file('index.html', buildNavPageHTML(navTitle, allDocs, firstDocSrc));
-    masterZip.file('nav.js', NAV_PAGE_SCRIPT);
 
     const blob = await masterZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
     const a = document.createElement('a');
@@ -270,7 +269,7 @@ async function exportMasterZip(allDocs) {
   }
 }
 
-// ── Nav page script (external file so viewer's MV3 CSP allows it) ─────
+// ── Nav page script (inlined in HTML; viewer.js strips and re-wires it) ─
 const NAV_PAGE_SCRIPT = `
 function navigate(el, src) {
   document.querySelectorAll('.doc-link').forEach(function(l) { l.classList.remove('active'); });
@@ -406,7 +405,7 @@ ${navLinks}
     <iframe id="docFrame" src="${firstDocSrc}"></iframe>
   </div>
 </div>
-<script src="nav.js"></script>
+<script>${NAV_PAGE_SCRIPT}</script>
 </body>
 </html>`;
 }
