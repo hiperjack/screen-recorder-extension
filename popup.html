@@ -22,93 +22,27 @@
   .step-count { font-size: 11px; color: #7070a0; }
   .step-count span { color: #e94560; font-weight: 700; }
 
-  .tabs { display: flex; background: #0d0d18; border-bottom: 1px solid #1e1e30; }
-  .tab-btn { flex: 1; padding: 9px 4px; background: none; border: none; color: #5a5a80; font-family: inherit; font-size: 11px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px; }
-  .tab-btn:hover { color: #9090b8; background: #12121e; }
-  .tab-btn.active { color: #e94560; border-bottom-color: #e94560; background: #13131f; }
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
+  .controls { padding: 16px; }
 
   .btn { width: 100%; padding: 10px 14px; border: none; border-radius: 7px; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
   .btn-record { background: linear-gradient(135deg, #e94560, #c62a47); color: #fff; box-shadow: 0 3px 12px rgba(233,69,96,0.3); }
   .btn-record:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(233,69,96,0.4); }
   .btn-record.active { background: linear-gradient(135deg, #ff6b35, #e94560); }
   .btn-secondary { background: #1e1e30; color: #b0b0d0; border: 1px solid #2a2a3e; }
-  .btn-secondary:hover:not(:disabled) { background: #252538; color: #e0e0f5; border-color: #3a3a5a; }
-  .btn-secondary:disabled { opacity: .3; cursor: not-allowed; }
-  .btn-export { background: linear-gradient(135deg, #1e3a5f, #0d2137); color: #7ec8e3; border: 1px solid #1e4a6f; }
-  .btn-export:hover:not(:disabled) { background: linear-gradient(135deg, #254873, #12273f); }
-  .btn-export:disabled { opacity: .3; cursor: not-allowed; }
+  .btn-secondary:hover { background: #252538; color: #e0e0f5; border-color: #3a3a5a; }
 
-  .controls { padding: 12px 16px; display: flex; flex-direction: column; gap: 7px; }
+  .tabs { display: flex; background: #0d0d18; border-top: 1px solid #1e1e30; }
+  .tab-btn { flex: 1; padding: 9px 4px; background: none; border: none; color: #5a5a80; font-family: inherit; font-size: 11px; font-weight: 500; cursor: pointer; border-top: 2px solid transparent; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px; }
+  .tab-btn:hover { color: #9090b8; background: #12121e; }
 
-  /* ── Step list ── */
-  .steps-list {
-    max-height: 220px; overflow-y: auto;
-    margin: 0 16px 0; border: 1px solid #1e1e30; border-radius: 8px; background: #0d0d18;
-  }
-  .steps-list::-webkit-scrollbar { width: 4px; }
-  .steps-list::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 2px; }
-
-  .step-row { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #151525; transition: background 0.15s; }
-  .step-row:last-child { border-bottom: none; }
-  .step-row.disabled-row { opacity: 0.38; }
-
-  .toggle { position: relative; flex-shrink: 0; width: 28px; height: 16px; margin-top: 2px; }
-  .toggle input { opacity: 0; width: 0; height: 0; }
-  .toggle-track { position: absolute; inset: 0; background: #2a2a40; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
-  .toggle-track::after { content: ''; position: absolute; width: 12px; height: 12px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
-  .toggle input:checked + .toggle-track { background: #e94560; }
-  .toggle input:checked + .toggle-track::after { transform: translateX(12px); }
-
-  .step-body { flex: 1; min-width: 0; }
-  .step-label { font-size: 11px; color: #9090b8; line-height: 1.5; }
-  .step-num-badge { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; background: #1e1e30; border-radius: 3px; font-size: 9px; color: #e94560; font-weight: 700; margin-right: 4px; flex-shrink: 0; vertical-align: middle; }
-  .step-url-line { font-size: 10px; color: #3a3a60; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .step-value-line { font-size: 10px; color: #7ec8e3; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .step-action-row { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
-  .action-badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
-  .action-select { font-size: 9px; font-family: inherit; background: #1e1e30; color: #b0b0d0; border: 1px solid #3a3a6a; border-radius: 3px; padding: 1px 2px; outline: none; cursor: pointer; }
-
-  .step-memo { margin-top: 4px; }
-  .memo-text { font-size: 10px; color: #606090; font-style: italic; cursor: pointer; padding: 2px 4px; border-radius: 3px; border: 1px solid transparent; transition: border-color 0.15s; display: block; white-space: pre-wrap; word-break: break-all; }
-  .memo-text:hover { border-color: #2a2a4a; color: #8080b0; }
-  .memo-text.empty { color: #363660; }
-  .memo-input { width: 100%; font-size: 10px; font-family: inherit; background: #13131f; color: #c0c0e0; border: 1px solid #3a3a6a; border-radius: 3px; padding: 3px 5px; outline: none; resize: none; line-height: 1.4; }
-  .element-text { cursor: pointer; border-radius: 2px; border: 1px solid transparent; transition: border-color 0.15s; }
-  .element-text:hover { border-color: #2a2a4a; color: #c0c0e8; }
-  .element-input { width: 100%; font-size: 11px; font-family: inherit; background: #0d0d18; color: #c0c0e0; border: 1px solid #3a3a6a; border-radius: 3px; padding: 2px 4px; outline: none; }
-
-  .step-order { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
-  .order-btn { background: #13131f; border: 1px solid #1e1e2e; color: #3a3a60; cursor: pointer; border-radius: 3px; width: 16px; height: 14px; font-size: 9px; padding: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; line-height: 1; }
-  .order-btn:hover:not(:disabled) { background: #1e1e30; color: #8080b0; border-color: #2a2a4a; }
-  .order-btn:disabled { opacity: 0.2; cursor: not-allowed; }
-
-  .select-all-bar { padding: 6px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1a1a28; }
-  .select-all-bar label { font-size: 11px; color: #7070a0; cursor: pointer; display: flex; align-items: center; gap: 5px; }
-  .enabled-count { font-size: 10px; color: #5a5a80; }
-  .enabled-count span { color: #e94560; font-weight: 700; }
-
-  /* ── Export settings (inside manage tab) ── */
-  .export-settings { border-top: 1px solid #1a1a28; padding: 10px 16px 4px; }
-  .setting-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .setting-row label:first-child { font-size: 11px; color: #5a5a80; white-space: nowrap; min-width: 52px; }
-  .setting-row input[type="text"] { flex: 1; padding: 6px 8px; background: #1e1e30; color: #e0e0f0; border: 1px solid #2a2a3e; border-radius: 5px; font-family: inherit; font-size: 11px; outline: none; }
-  .setting-row input[type="text"]:focus { border-color: #3a3a6a; }
-  .chk-label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 11px; color: #b0b0d0; }
-  .chk-label input[type="checkbox"] { accent-color: #e94560; }
-  .btn-row { display: flex; gap: 8px; padding-bottom: 10px; }
-  .btn-row .btn { flex: 1; width: auto; padding: 9px 10px; font-size: 11px; }
-
-  /* ── Screenshot timing toggle ── */
-  .timing-row { display: flex; align-items: center; gap: 5px; }
-  .timing-row > span { font-size: 10px; color: #5a5a80; white-space: nowrap; margin-right: 2px; }
-  .timing-opt { display: flex; align-items: center; justify-content: center; flex: 1; gap: 3px; font-size: 10px; color: #5a5a80; cursor: pointer; padding: 5px 6px; border: 1px solid #1e1e30; border-radius: 5px; transition: all 0.15s; background: #0d0d18; user-select: none; }
-  .timing-opt input[type="radio"] { display: none; }
-  .timing-opt.selected { color: #e0e0f5; border-color: #4a4a8a; background: #1a1a30; }
-
-  .empty-state { padding: 20px 16px; text-align: center; color: #3a3a5a; font-size: 11px; line-height: 1.8; }
-  .empty-state .icon { font-size: 26px; display: block; margin-bottom: 6px; }
+  /* Title input dialog */
+  .dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .dialog-box { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 20px; width: 320px; }
+  .dialog-box h3 { font-size: 13px; font-weight: 700; color: #c0c0e0; margin-bottom: 12px; }
+  .dialog-box input[type="text"] { width: 100%; padding: 8px 10px; background: #0d0d18; color: #e0e0f0; border: 1px solid #2a2a4a; border-radius: 6px; font-family: inherit; font-size: 12px; outline: none; margin-bottom: 14px; }
+  .dialog-box input[type="text"]:focus { border-color: #4a4a8a; }
+  .dialog-btn-row { display: flex; gap: 8px; justify-content: flex-end; }
+  .dialog-btn-row .btn { width: auto; padding: 7px 18px; font-size: 11px; }
 
   .toast { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%) translateY(50px); background: #1e1e30; color: #b0ffd0; padding: 7px 14px; border-radius: 16px; font-size: 11px; border: 1px solid #2a5a3a; transition: transform 0.3s; pointer-events: none; white-space: nowrap; }
   .toast.show { transform: translateX(-50%) translateY(0); }
@@ -134,63 +68,35 @@
   <div class="step-count" id="stepCount"></div>
 </div>
 
-<div class="controls" style="padding-bottom:8px">
+<div class="controls">
   <button class="btn btn-record" id="btnRecord">
     <span id="recordIcon">⏺</span>
     <span id="recordLabel">記録を開始する</span>
   </button>
-  <div class="timing-row">
-    <span data-i18n="popup.screenshot.label">📷 スクショ</span>
-    <label class="timing-opt" id="timingClickLabel">
-      <input type="radio" name="timing" value="click" id="timingClick"> <span data-i18n="popup.timing.click">離した瞬間</span>
-    </label>
-    <label class="timing-opt selected" id="timingMousedownLabel">
-      <input type="radio" name="timing" value="mousedown" id="timingMousedown" checked> <span data-i18n="popup.timing.mousedown">押した瞬間</span>
-    </label>
-  </div>
 </div>
 
 <div class="tabs">
-  <button class="tab-btn active" data-tab="manage" data-i18n="popup.tab.manage">📝 ステップ管理</button>
   <button class="tab-btn" id="btnOpenEditor" data-i18n="popup.tab.editor">📂 編集</button>
   <button class="tab-btn" id="btnOpenViewer" data-i18n="popup.tab.viewer">👁 照会</button>
   <button class="tab-btn" id="btnOpenFinalizer" data-i18n="popup.tab.finalizer">📑 最終化</button>
 </div>
 
-<!-- Tab: Manage -->
-<div class="tab-panel active" id="tab-manage">
-  <div class="select-all-bar" id="selectAllBar" style="display:none">
-    <label><input type="checkbox" id="chkAll" checked> <span data-i18n="popup.select.all">すべて選択</span></label>
-    <span class="enabled-count" id="enabledCount"></span>
-  </div>
-  <div id="stepsListContainer">
-    <div class="empty-state">
-      <span class="icon">🎬</span>
-      「記録を開始する」を押してから<br>ページを操作してください
-    </div>
-  </div>
-
-  <div class="export-settings">
-    <div class="setting-row">
-      <label data-i18n="popup.title.label">タイトル</label>
-      <input type="text" id="docTitleInput" data-i18n="popup.title.placeholder" data-i18n-target="placeholder" placeholder="操作手順書">
-    </div>
-    <div class="setting-row">
-      <label data-i18n="popup.show.url">URL表示</label>
-      <label class="chk-label">
-        <input type="checkbox" id="chkShowUrl" checked> <span data-i18n="popup.show.url.on">表示する</span>
-      </label>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-secondary" id="btnClear" disabled data-i18n="popup.btn.clear">🗑 クリア</button>
-      <button class="btn btn-export" id="btnExport" disabled data-i18n="popup.btn.export">⬇ エクスポート</button>
+<!-- Title input dialog -->
+<div id="titleDialog" style="display:none">
+  <div class="dialog-overlay">
+    <div class="dialog-box">
+      <h3 data-i18n="popup.dialog.start">タイトルを入力</h3>
+      <input type="text" id="titleDialogInput" data-i18n="popup.title.placeholder" data-i18n-target="placeholder" placeholder="操作手順書">
+      <div class="dialog-btn-row">
+        <button class="btn btn-secondary" id="btnDialogCancel" data-i18n="confirm.cancel">キャンセル</button>
+        <button class="btn btn-record" id="btnDialogOk">OK</button>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 <script src="i18n.js"></script>
-<script src="jszip.min.js"></script>
 <script src="popup.js"></script>
 </body>
 </html>

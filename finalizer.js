@@ -227,7 +227,7 @@ function updateExportBtn() {
   const total = docItems.length;
   if (total > 0) {
     docCount.style.display = '';
-    docCount.innerHTML = `<span>${active.length}</span> / ${total} 件 出力対象`;
+    docCount.innerHTML = t('popup.enabled.count', { enabled: active.length, total });
   } else {
     docCount.style.display = 'none';
   }

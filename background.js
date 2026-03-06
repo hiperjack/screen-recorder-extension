@@ -64,26 +64,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // State query
   if (message.type === 'GET_RECORDING_STATE') {
-    chrome.storage.local.get(['isRecording', 'screenshotTiming'], (data) => {
-      sendResponse({
-        isRecording: data.isRecording || false,
-        screenshotTiming: data.screenshotTiming || 'mousedown'
-      });
+    chrome.storage.local.get(['isRecording', 'lang'], (data) => {
+      sendResponse({ isRecording: data.isRecording || false, lang: data.lang || 'ja' });
     });
     return true;
   }
 
   // State update — broadcast to all tabs
   if (message.type === 'SET_RECORDING_STATE') {
-    const { isRecording, screenshotTiming = 'click' } = message;
-    chrome.storage.local.set({ isRecording, screenshotTiming });
+    const { isRecording, lang = 'ja' } = message;
+    chrome.storage.local.set({ isRecording, lang });
     updateActionIcon(isRecording);
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach(tab => {
         chrome.tabs.sendMessage(tab.id, {
           type: 'RECORDING_STATE_CHANGED',
           isRecording,
-          screenshotTiming
+          lang
         }).catch(() => {});
       });
     });

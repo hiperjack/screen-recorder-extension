@@ -23,10 +23,16 @@ const toast           = document.getElementById('toast');
 
 // ── Action options ────────────────────────────────────────────────────
 const ACTION_OPTS = [
-  { label: 'クリック', color: '#e94560' },
-  { label: '入力',     color: '#4a9eff' },
-  { label: '選択',     color: '#50c878' },
+  { key: 'click',  color: '#e94560' },
+  { key: 'input',  color: '#4a9eff' },
+  { key: 'select', color: '#50c878' },
 ];
+const ACTION_LABEL_TO_KEY = {
+  'クリック':'click','Click':'click',
+  '入力':'input','Input':'input',
+  '選択':'select','Select':'select',
+};
+function actionToKey(label) { return ACTION_LABEL_TO_KEY[label] || 'click'; }
 
 // ── State ─────────────────────────────────────────────────────────────
 let importedSteps = [];
@@ -311,8 +317,8 @@ function parseImportedHTML(html) {
     });
     importedSteps.push({
       idx: i + 1,
-      actionLabel: badge?.textContent?.trim() || '',
-      actionColor: badge?.style.color || '#888',
+      actionKey:   actionToKey(badge?.textContent?.trim() || ''),
+      actionColor: ACTION_OPTS.find(a => a.key === actionToKey(badge?.textContent?.trim() || ''))?.color || badge?.style.color || '#888',
       element, url, value, memo,
       screenshot: imgEl?.getAttribute('src') || null,
       enabled: true
@@ -356,7 +362,7 @@ function renderSteps() {
       </div>
       <div class="step-body">
         <div class="step-row1">
-          <span class="action-badge" style="background:${s.actionColor}22;color:${s.actionColor};border:1px solid ${s.actionColor}33;cursor:pointer" data-idx="${s.idx}">${esc(s.actionLabel)}</span>
+          <span class="action-badge" style="background:${s.actionColor}22;color:${s.actionColor};border:1px solid ${s.actionColor}33;cursor:pointer" data-idx="${s.idx}">${esc(t('action.' + s.actionKey))}</span>
           <span class="step-element editable${s.element ? '' : ' empty'}" data-idx="${s.idx}">${s.element ? esc(s.element) : '＋ 要素名を入力...'}</span>
         </div>
         <div class="step-url">${esc(host)}</div>
@@ -431,7 +437,7 @@ function renderSteps() {
 
   const addBtn = document.createElement('button');
   addBtn.className = 'btn-add-step';
-  addBtn.textContent = '＋ 新規ステップを追加';
+  addBtn.textContent = t('editor.btn.add.step');
   addBtn.addEventListener('click', addNewStep);
   stepsList.appendChild(addBtn);
 
@@ -442,7 +448,7 @@ function addNewStep() {
   const newIdx = importedSteps.length > 0 ? Math.max(...importedSteps.map(s => s.idx)) + 1 : 1;
   importedSteps.push({
     idx: newIdx,
-    actionLabel: 'クリック',
+    actionKey:   'click',
     actionColor: '#e94560',
     element: '',
     url: '', value: '', memo: '',
@@ -470,16 +476,16 @@ function startActionEdit(badge) {
   sel.className = 'action-select';
   ACTION_OPTS.forEach(a => {
     const opt = document.createElement('option');
-    opt.value = a.label; opt.textContent = a.label;
-    if (a.label === s.actionLabel) opt.selected = true;
+    opt.value = a.key; opt.textContent = t('action.' + a.key);
+    if (a.key === s.actionKey) opt.selected = true;
     sel.appendChild(opt);
   });
   badge.replaceWith(sel); sel.focus();
   const commit = () => {
-    const chosen = ACTION_OPTS.find(a => a.label === sel.value) || ACTION_OPTS[0];
-    s.actionLabel = chosen.label;
+    const chosen = ACTION_OPTS.find(a => a.key === sel.value) || ACTION_OPTS[0];
+    s.actionKey = chosen.key;
     s.actionColor = chosen.color;
-    badge.textContent = s.actionLabel;
+    badge.textContent = t('action.' + s.actionKey);
     badge.style.background = `${s.actionColor}22`;
     badge.style.color = s.actionColor;
     badge.style.border = `1px solid ${s.actionColor}33`;
@@ -489,7 +495,7 @@ function startActionEdit(badge) {
   sel.addEventListener('blur', commit);
   sel.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); commit(); }
-    if (e.key === 'Escape') { sel.value = s.actionLabel; commit(); }
+    if (e.key === 'Escape') { sel.value = s.actionKey; commit(); }
   });
 }
 
@@ -537,7 +543,7 @@ function startMemoEdit(span) {
 
 function updateCount() {
   const total = importedSteps.length, en = importedSteps.filter(s => s.enabled).length;
-  enabledCount.innerHTML = `<span>${en}</span> / ${total} 件 出力対象`;
+  enabledCount.innerHTML = t('popup.enabled.count', { enabled: en, total });
   btnExport.disabled = en === 0;
 }
 
@@ -610,13 +616,13 @@ btnPreviewViewer.addEventListener('click', async () => {
     // Nav ZIP: open full nav ZIP (with all docs) in viewer
     const choice = await showSaveDialog(t('save.dialog.title.viewer'), t('save.dialog.skip'));
     if (choice === null) return;
-    if (choice === 'save') await exportNavZip(importedFilename || importedTitle);
+    if (choice === 'save') await exportNavZip(importedFilename || `${importedTitle}_${formatDatetime()}`);
     showToast(t('toast.viewer.opening'));
     try {
       const blob = await buildNavZip();
       const blobUrl = URL.createObjectURL(blob);
       const viewerBase = chrome.runtime?.getURL ? chrome.runtime.getURL('viewer.html') : 'viewer.html';
-      const viewerUrl = `${viewerBase}?zipUrl=${encodeURIComponent(blobUrl)}&filename=${encodeURIComponent((importedFilename || importedTitle) + '.zip')}`;
+      const viewerUrl = `${viewerBase}?zipUrl=${encodeURIComponent(blobUrl)}&filename=${encodeURIComponent((importedFilename || `${importedTitle}_${formatDatetime()}`) + '.zip')}`;
       window.open(viewerUrl, '_blank');
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
       showToast(t('toast.viewer.opened'));
@@ -629,7 +635,7 @@ btnPreviewViewer.addEventListener('click', async () => {
   if (!active.length) { showToast(t('toast.no.steps')); return; }
   const choice = await showSaveDialog(t('save.dialog.title.viewer'), t('save.dialog.skip'));
   if (choice === null) return;
-  if (choice === 'save') await exportZip(active, importedFilename || importedTitle);
+  if (choice === 'save') await exportZip(active, importedFilename || `${importedTitle}_${formatDatetime()}`);
   showToast(t('toast.viewer.opening'));
   try {
     const zip = new JSZip();
@@ -647,7 +653,7 @@ btnPreviewViewer.addEventListener('click', async () => {
           screenshotSrc = s.screenshot;
         }
       }
-      return buildStepCardHTML(i + 1, s.actionLabel, s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
+      return buildStepCardHTML(i + 1, t('action.' + s.actionKey), s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
     }).join('');
     zip.file('index.html', buildPageHTML(importedTitle, now, active.length, cardsHTML));
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
@@ -668,9 +674,9 @@ btnExport.addEventListener('click', async () => {
   const active = importedSteps.filter(s => s.enabled);
   if (!active.length) { showToast(t('toast.no.steps')); return; }
   if (sourceNavZip) {
-    await exportNavZip(importedFilename || importedTitle);
+    await exportNavZip(importedFilename || `${importedTitle}_${formatDatetime()}`);
   } else {
-    await exportZip(active, importedFilename || importedTitle);
+    await exportZip(active, importedFilename || `${importedTitle}_${formatDatetime()}`);
   }
 });
 
@@ -711,7 +717,7 @@ async function buildNavZip() {
             screenshotSrc = s.screenshot;
           }
         }
-        return buildStepCardHTML(i + 1, s.actionLabel, s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
+        return buildStepCardHTML(i + 1, t('action.' + s.actionKey), s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
       }).join('');
       newZip.file(prefix + 'index.html', buildPageHTML(doc.title, now, activeSteps.length, cardsHTML));
     }
@@ -747,7 +753,7 @@ async function exportZip(activeSteps, baseName) {
         screenshotSrc = s.screenshot;
       }
     }
-    return buildStepCardHTML(i + 1, s.actionLabel, s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
+    return buildStepCardHTML(i + 1, t('action.' + s.actionKey), s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
   }).join('');
 
   zip.file('index.html', buildPageHTML(importedTitle, now, activeSteps.length, cardsHTML));
@@ -847,9 +853,43 @@ function showLightbox(src) {
   _lightbox.style.display = 'flex';
 }
 
+// ── Load from recording (opened from popup after stop) ────────────────
+async function loadFromRecording() {
+  const stored = await chrome.storage.local.get(['steps', 'stepMeta', 'docTitle']);
+  const rawSteps = stored.steps || [];
+  const rawMeta  = stored.stepMeta || {};
+  if (rawSteps.length === 0) return;
+
+  importedTitle    = stored.docTitle || t('popup.title.default');
+  importedFilename = '';
+  sourceNavZip     = null;
+  sourceNavDocPrefix = '';
+  navDocs = []; activeNavDocIdx = -1;
+
+  importedSteps = rawSteps.map((s, i) => {
+    const meta      = rawMeta[s.step] || {};
+    const actionKey = meta.action || s.action || 'click';
+    const opt       = ACTION_OPTS.find(a => a.key === actionKey) || ACTION_OPTS[0];
+    return {
+      idx:         i + 1,
+      actionKey:   opt.key,
+      actionColor: opt.color,
+      element:     meta.element || s.element || '',
+      url:         s.url   || '',
+      value:       s.value || '',
+      memo:        meta.memo || '',
+      screenshot:  s.screenshot || null,
+      enabled:     meta.enabled !== false,
+    };
+  });
+
+  showLoadedUI(importedTitle);
+}
+
 // ── Auto-load ZIP from URL param (opened from viewer.html) ────────────
 (async () => {
   const p = new URLSearchParams(location.search);
+  if (p.get('fromRecording')) { await loadFromRecording(); return; }
   const zipUrl = p.get('zipUrl');
   const filename = p.get('filename');
   if (!zipUrl || !filename) return;

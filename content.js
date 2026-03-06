@@ -6,7 +6,7 @@
   let isRecording = false;
   let stepCounter = 0;
   let highlightOverlay = null;
-  let screenshotTiming = 'mousedown';
+  let lang = 'ja';
   let singleCaptureMode = false;
 
   // ── Overlay highlight ────────────────────────────────────────────
@@ -58,18 +58,33 @@
 
     const typeAttr = el.getAttribute('type') || '';
     const role = el.getAttribute('role') || '';
+    const q = s => lang === 'ja' ? `「${s}」` : `"${s}"`;
 
-    if (tag === 'a') return `リンク「${label || el.href}」`;
-    if (tag === 'button' || role === 'button') return `ボタン「${label}」`;
-    if (tag === 'input') {
-      if (typeAttr === 'checkbox') return `チェックボックス「${label}」`;
-      if (typeAttr === 'radio') return `ラジオボタン「${label}」`;
-      if (typeAttr === 'submit' || typeAttr === 'button') return `ボタン「${label || typeAttr}」`;
-      return `入力フィールド「${label}」`;
+    if (lang === 'ja') {
+      if (tag === 'a') return `リンク${q(label || el.href)}`;
+      if (tag === 'button' || role === 'button') return `ボタン${q(label)}`;
+      if (tag === 'input') {
+        if (typeAttr === 'checkbox') return `チェックボックス${q(label)}`;
+        if (typeAttr === 'radio') return `ラジオボタン${q(label)}`;
+        if (typeAttr === 'submit' || typeAttr === 'button') return `ボタン${q(label || typeAttr)}`;
+        return `入力フィールド${q(label)}`;
+      }
+      if (tag === 'select') return `ドロップダウン${q(label)}`;
+      if (tag === 'textarea') return `テキストエリア${q(label)}`;
+      return label ? q(label) : `${tag}要素`;
+    } else {
+      if (tag === 'a') return `Link ${q(label || el.href)}`;
+      if (tag === 'button' || role === 'button') return `Button ${q(label)}`;
+      if (tag === 'input') {
+        if (typeAttr === 'checkbox') return `Checkbox ${q(label)}`;
+        if (typeAttr === 'radio') return `Radio button ${q(label)}`;
+        if (typeAttr === 'submit' || typeAttr === 'button') return `Button ${q(label || typeAttr)}`;
+        return `Input field ${q(label)}`;
+      }
+      if (tag === 'select') return `Dropdown ${q(label)}`;
+      if (tag === 'textarea') return `Textarea ${q(label)}`;
+      return label ? q(label) : `${tag} element`;
     }
-    if (tag === 'select') return `ドロップダウン「${label}」`;
-    if (tag === 'textarea') return `テキストエリア「${label}」`;
-    return label ? `「${label}」` : `${tag}要素`;
   }
 
   function getXPath(el) {
@@ -98,11 +113,6 @@
 
     showHighlight(el);
 
-    // click mode: wait for highlight to render before sending capture request
-    if (screenshotTiming === 'click') {
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    }
-
     const step = {
       step: stepCounter,
       timestamp: new Date().toISOString(),
@@ -129,12 +139,6 @@
   }
 
   // ── Event listeners ───────────────────────────────────────────────
-  function onClick(e) {
-    if (!isRecording) return;
-    const el = e.target.closest('a, button, input, select, [role="button"], [onclick]') || e.target;
-    captureStep('click', el);
-  }
-
   function onMouseDown(e) {
     if (!isRecording || e.button !== 0) return;
     const el = e.target.closest('a, button, input, select, [role="button"], [onclick]') || e.target;
@@ -162,17 +166,12 @@
   }
 
   function attachListeners() {
-    if (screenshotTiming === 'mousedown') {
-      document.addEventListener('mousedown', onMouseDown, true);
-    } else {
-      document.addEventListener('click', onClick, true);
-    }
+    document.addEventListener('mousedown', onMouseDown, true);
     document.addEventListener('input', onInput, true);
     document.addEventListener('change', onChange, true);
   }
 
   function detachListeners() {
-    document.removeEventListener('click', onClick, true);
     document.removeEventListener('mousedown', onMouseDown, true);
     document.removeEventListener('input', onInput, true);
     document.removeEventListener('change', onChange, true);
@@ -231,7 +230,7 @@
       exitSingleCaptureMode();
     }
     if (message.type === 'RECORDING_STATE_CHANGED') {
-      screenshotTiming = message.screenshotTiming || 'mousedown';
+      lang = message.lang || 'ja';
       isRecording = message.isRecording;
       detachListeners(); // always detach first to prevent duplicate listeners
       if (isRecording) {
@@ -289,7 +288,7 @@
   // Sync initial state
   chrome.runtime.sendMessage({ type: 'GET_RECORDING_STATE' }, res => {
     if (res?.isRecording) {
-      screenshotTiming = res.screenshotTiming || 'mousedown';
+      lang = res.lang || 'ja';
       isRecording = true;
       createOverlay();
       attachListeners();
