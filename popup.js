@@ -16,28 +16,51 @@ const chkAll       = document.getElementById('chkAll');
 const docTitleInput  = document.getElementById('docTitleInput');
 const chkShowUrl     = document.getElementById('chkShowUrl');
 const toast          = document.getElementById('toast');
+const timingClickLabel     = document.getElementById('timingClickLabel');
+const timingMousedownLabel = document.getElementById('timingMousedownLabel');
+const timingClick          = document.getElementById('timingClick');
+const timingMousedown      = document.getElementById('timingMousedown');
 
 // ── State ─────────────────────────────────────────────────────────
-let steps      = [];
-let stepMeta   = {};
-let isRecording= false;
-let docTitle   = '操作手順書';
-let showUrl    = true;
+let steps           = [];
+let stepMeta        = {};
+let isRecording     = false;
+let docTitle        = '操作手順書';
+let showUrl         = true;
+let screenshotTiming = 'mousedown';
 
 // ── Init ─────────────────────────────────────────────────────────
 async function init() {
-  const stored = await chrome.storage.local.get(['steps','stepMeta','isRecording','docTitle','showUrl']);
-  steps       = stored.steps    || [];
-  stepMeta    = stored.stepMeta || {};
-  isRecording = stored.isRecording || false;
-  docTitle    = stored.docTitle || '操作手順書';
-  showUrl     = stored.showUrl !== false;
+  const stored = await chrome.storage.local.get(['steps','stepMeta','isRecording','docTitle','showUrl','screenshotTiming']);
+  steps            = stored.steps    || [];
+  stepMeta         = stored.stepMeta || {};
+  isRecording      = stored.isRecording || false;
+  docTitle         = stored.docTitle || '操作手順書';
+  showUrl          = stored.showUrl !== false;
+  screenshotTiming = stored.screenshotTiming || 'mousedown';
   docTitleInput.value = docTitle;
   chkShowUrl.checked  = showUrl;
+  applyTimingUI();
   steps.forEach(s => { if (!stepMeta[s.step]) stepMeta[s.step] = { enabled: true, memo: '' }; });
   renderStatus();
   renderStepsList();
 }
+
+function applyTimingUI() {
+  timingClick.checked     = screenshotTiming === 'click';
+  timingMousedown.checked = screenshotTiming === 'mousedown';
+  timingClickLabel.classList.toggle('selected',     screenshotTiming === 'click');
+  timingMousedownLabel.classList.toggle('selected', screenshotTiming === 'mousedown');
+}
+
+[timingClickLabel, timingMousedownLabel].forEach(label => {
+  label.addEventListener('click', async () => {
+    const radio = label.querySelector('input[type="radio"]');
+    screenshotTiming = radio.value;
+    await chrome.storage.local.set({ screenshotTiming });
+    applyTimingUI();
+  });
+});
 
 docTitleInput.addEventListener('input', async () => {
   docTitle = docTitleInput.value || '操作手順書';
@@ -283,7 +306,7 @@ btnRecord.addEventListener('click', async () => {
   isRecording = !isRecording;
   if (isRecording) { steps = []; stepMeta = {}; }
   await chrome.storage.local.set({ isRecording, steps, stepMeta });
-  await chrome.runtime.sendMessage({ type: 'SET_RECORDING_STATE', isRecording });
+  await chrome.runtime.sendMessage({ type: 'SET_RECORDING_STATE', isRecording, screenshotTiming });
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.id) { try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }); } catch(_){} }
   renderStatus(); renderStepsList();

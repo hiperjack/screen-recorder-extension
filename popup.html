@@ -100,6 +100,13 @@
   .btn-row { display: flex; gap: 8px; padding-bottom: 10px; }
   .btn-row .btn { flex: 1; width: auto; padding: 9px 10px; font-size: 11px; }
 
+  /* ── Screenshot timing toggle ── */
+  .timing-row { display: flex; align-items: center; gap: 5px; }
+  .timing-row > span { font-size: 10px; color: #5a5a80; white-space: nowrap; margin-right: 2px; }
+  .timing-opt { display: flex; align-items: center; justify-content: center; flex: 1; gap: 3px; font-size: 10px; color: #5a5a80; cursor: pointer; padding: 5px 6px; border: 1px solid #1e1e30; border-radius: 5px; transition: all 0.15s; background: #0d0d18; user-select: none; }
+  .timing-opt input[type="radio"] { display: none; }
+  .timing-opt.selected { color: #e0e0f5; border-color: #4a4a8a; background: #1a1a30; }
+
   .empty-state { padding: 20px 16px; text-align: center; color: #3a3a5a; font-size: 11px; line-height: 1.8; }
   .empty-state .icon { font-size: 26px; display: block; margin-bottom: 6px; }
 
@@ -130,6 +137,15 @@
     <span id="recordIcon">⏺</span>
     <span id="recordLabel">記録を開始する</span>
   </button>
+  <div class="timing-row">
+    <span>📷 スクショ</span>
+    <label class="timing-opt" id="timingClickLabel">
+      <input type="radio" name="timing" value="click" id="timingClick"> 離した瞬間
+    </label>
+    <label class="timing-opt selected" id="timingMousedownLabel">
+      <input type="radio" name="timing" value="mousedown" id="timingMousedown" checked> 押した瞬間
+    </label>
+  </div>
 </div>
 
 <div class="tabs">

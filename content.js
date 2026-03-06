@@ -6,6 +6,7 @@
   let isRecording = false;
   let stepCounter = 0;
   let highlightOverlay = null;
+  let screenshotTiming = 'mousedown';
 
   // ── Overlay highlight ────────────────────────────────────────────
   function createOverlay() {
@@ -87,22 +88,19 @@
   }
 
   // ── Capture step ─────────────────────────────────────────────────
+  let captureInProgress = false;
+
   async function captureStep(action, el, extra = {}) {
-    if (!isRecording) return;
+    if (!isRecording || captureInProgress) return;
+    captureInProgress = true;
     stepCounter++;
 
     showHighlight(el);
 
-    // Small delay to let the highlight render before screenshot
-    await new Promise(r => setTimeout(r, 120));
-
-    const screenshot = await new Promise(resolve => {
-      chrome.runtime.sendMessage({ type: 'CAPTURE_SCREENSHOT' }, res => {
-        resolve(res?.screenshot || null);
-      });
-    });
-
-    hideHighlight();
+    // click mode: wait for highlight to render before sending capture request
+    if (screenshotTiming === 'click') {
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    }
 
     const step = {
       step: stepCounter,
@@ -112,16 +110,32 @@
       action,
       element: describeElement(el),
       xpath: getXPath(el),
-      screenshot,
       ...extra
     };
 
-    chrome.runtime.sendMessage({ type: 'ADD_STEP', step });
+    // Fire-and-forget: background handles screenshot capture + storage.
+    // This message is sent before any navigation can occur, and the background
+    // service worker continues even if this content script context is destroyed.
+    try {
+      chrome.runtime.sendMessage({ type: 'CAPTURE_AND_SAVE_STEP', step });
+    } catch (_) {}
+
+    // Hide highlight after a short delay (visual feedback only)
+    setTimeout(() => {
+      hideHighlight();
+      captureInProgress = false;
+    }, 400);
   }
 
   // ── Event listeners ───────────────────────────────────────────────
   function onClick(e) {
     if (!isRecording) return;
+    const el = e.target.closest('a, button, input, select, [role="button"], [onclick]') || e.target;
+    captureStep('click', el);
+  }
+
+  function onMouseDown(e) {
+    if (!isRecording || e.button !== 0) return;
     const el = e.target.closest('a, button, input, select, [role="button"], [onclick]') || e.target;
     captureStep('click', el);
   }
@@ -147,13 +161,18 @@
   }
 
   function attachListeners() {
-    document.addEventListener('click', onClick, true);
+    if (screenshotTiming === 'mousedown') {
+      document.addEventListener('mousedown', onMouseDown, true);
+    } else {
+      document.addEventListener('click', onClick, true);
+    }
     document.addEventListener('input', onInput, true);
     document.addEventListener('change', onChange, true);
   }
 
   function detachListeners() {
     document.removeEventListener('click', onClick, true);
+    document.removeEventListener('mousedown', onMouseDown, true);
     document.removeEventListener('input', onInput, true);
     document.removeEventListener('change', onChange, true);
   }
@@ -161,14 +180,15 @@
   // ── Message handler ───────────────────────────────────────────────
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'RECORDING_STATE_CHANGED') {
+      screenshotTiming = message.screenshotTiming || 'mousedown';
       isRecording = message.isRecording;
+      detachListeners(); // always detach first to prevent duplicate listeners
       if (isRecording) {
         stepCounter = 0;
         createOverlay();
         attachListeners();
         showRecordingBadge();
       } else {
-        detachListeners();
         hideHighlight();
         hideRecordingBadge();
       }
@@ -218,6 +238,7 @@
   // Sync initial state
   chrome.runtime.sendMessage({ type: 'GET_RECORDING_STATE' }, res => {
     if (res?.isRecording) {
+      screenshotTiming = res.screenshotTiming || 'mousedown';
       isRecording = true;
       createOverlay();
       attachListeners();
