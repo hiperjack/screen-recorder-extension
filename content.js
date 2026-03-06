@@ -113,6 +113,9 @@
 
     showHighlight(el);
 
+    // Wait for the highlight to be painted before capturing
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
     const step = {
       step: stepCounter,
       timestamp: new Date().toISOString(),
