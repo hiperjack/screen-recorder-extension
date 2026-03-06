@@ -83,6 +83,10 @@
   .thumb-btn-del:hover { background: #351515; }
   .thumb-btn-add { background: #1a2e1a; color: #7edb9a; border: 1px solid #2a4a2a; }
   .thumb-btn-add:hover { background: #203820; }
+  .thumb-btn-paste { background: #1a2a3a; color: #7ec8e3; border: 1px solid #1e3a50; }
+  .thumb-btn-paste:hover { background: #1e3248; }
+  .thumb-btn-single { background: #2a1a3a; color: #c07edb; border: 1px solid #3a2050; }
+  .thumb-btn-single:hover { background: #33204a; }
   .screenshot-input { display: none; }
 
   /* ── Title edit ── */
@@ -135,6 +139,10 @@
   body.light-mode .thumb-btn-del:hover { background: #f8d8d8; }
   body.light-mode .thumb-btn-add { background: #e8fce8; color: #2a8a3a; border-color: #b0e8b8; }
   body.light-mode .thumb-btn-add:hover { background: #d8f8d8; }
+  body.light-mode .thumb-btn-paste { background: #e4f4fc; color: #1a6a9a; border-color: #a0d0f0; }
+  body.light-mode .thumb-btn-paste:hover { background: #d4ecf8; }
+  body.light-mode .thumb-btn-single { background: #f0e8fc; color: #7a3aaa; border-color: #d0b0f0; }
+  body.light-mode .thumb-btn-single:hover { background: #e8d8f8; }
   body.light-mode .title-bar { border-bottom-color: #e0e0ea; }
   body.light-mode .doc-title-text { color: #1a1a2e; }
   body.light-mode .doc-title-input { color: #1a1a2e; }
@@ -147,6 +155,22 @@
   .btn-add-step:hover { background: #1a1a30; border-color: #4a4a8a; color: #9090c8; }
   body.light-mode .btn-add-step { background: #f0f2fa; color: #6070b0; border-color: #c0c8e8; }
   body.light-mode .btn-add-step:hover { background: #e4e8f8; border-color: #8090c8; color: #3a50a0; }
+
+  /* ── Confirm modal ── */
+  .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 20000; display: flex; align-items: center; justify-content: center; }
+  .confirm-box { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 14px; padding: 28px 28px 20px; min-width: 260px; max-width: 320px; text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
+  .confirm-box p { font-size: 14px; font-weight: 600; color: #e8e8f8; margin-bottom: 6px; }
+  .confirm-box .confirm-sub { font-size: 11px; font-weight: 400; color: #6060a0; margin-bottom: 20px; }
+  .confirm-btns { display: flex; gap: 10px; }
+  .confirm-btn { flex: 1; padding: 9px 12px; border: none; border-radius: 7px; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .confirm-btn-cancel { background: #1e1e30; color: #9090b8; border: 1px solid #2a2a4a; }
+  .confirm-btn-cancel:hover { background: #252540; }
+  .confirm-btn-ok { background: linear-gradient(135deg, #e94560, #c62a47); color: #fff; }
+  .confirm-btn-ok:hover { filter: brightness(1.1); }
+  body.light-mode .confirm-box { background: #ffffff; border-color: #e0e0ea; }
+  body.light-mode .confirm-box p { color: #1a1a2e; }
+  body.light-mode .confirm-box .confirm-sub { color: #9090b0; }
+  body.light-mode .confirm-btn-cancel { background: #f0f0f8; color: #5a5a8a; border-color: #d0d0e0; }
 </style>
 </head>
 <body>
@@ -195,6 +219,18 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="confirm-overlay" id="confirmOverlay" style="display:none">
+  <div class="confirm-box">
+    <p id="confirmMessage"></p>
+    <p class="confirm-sub" id="confirmSub"></p>
+    <div class="confirm-btns">
+      <button class="confirm-btn confirm-btn-cancel" id="confirmCancel">キャンセル</button>
+      <button class="confirm-btn confirm-btn-ok" id="confirmOk">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <script src="jszip.min.js"></script>
 <script src="editor.js"></script>
 </body>

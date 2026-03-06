@@ -1,5 +1,52 @@
 // background.js — service worker
 
+// ── Extension icon ────────────────────────────────────────────────────
+function drawIcon(size, isRecording) {
+  const canvas = new OffscreenCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  const cx = size / 2, cy = size / 2, r = size / 2;
+
+  if (isRecording) {
+    // Red circle background
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#e94560';
+    ctx.fill();
+    // White inner circle (classic ● recording indicator)
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.42, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  } else {
+    // Dark gray circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#3a3a5a';
+    ctx.fill();
+    // White pause bars ⏸
+    const bw = Math.max(2, r * 0.22), bh = r * 0.72, by = cy - bh / 2;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - r * 0.34, by, bw, bh);
+    ctx.fillRect(cx + r * 0.12, by, bw, bh);
+  }
+
+  return ctx.getImageData(0, 0, size, size);
+}
+
+function updateActionIcon(isRecording) {
+  chrome.action.setIcon({
+    imageData: {
+      16: drawIcon(16, isRecording),
+      32: drawIcon(32, isRecording),
+    }
+  });
+}
+
+// Sync icon on service worker startup
+chrome.storage.local.get('isRecording', data => {
+  updateActionIcon(data.isRecording || false);
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Screenshot capture (called from content script)
@@ -30,6 +77,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'SET_RECORDING_STATE') {
     const { isRecording, screenshotTiming = 'click' } = message;
     chrome.storage.local.set({ isRecording, screenshotTiming });
+    updateActionIcon(isRecording);
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach(tab => {
         chrome.tabs.sendMessage(tab.id, {
@@ -41,6 +89,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     sendResponse({ success: true });
     return true;
+  }
+
+  // Single capture: start → broadcast READY to all tabs
+  if (message.type === 'SINGLE_CAPTURE_START') {
+    chrome.storage.local.remove('singleCaptureResult');
+    chrome.tabs.query({}, tabs => {
+      tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { type: 'SINGLE_CAPTURE_READY' }).catch(() => {}));
+    });
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  // Single capture: tab was clicked → capture + save result
+  if (message.type === 'SINGLE_CAPTURE_CLICK') {
+    const windowId = sender.tab?.windowId;
+    chrome.tabs.captureVisibleTab(windowId, { format: 'png', quality: 85 }, dataUrl => {
+      const screenshot = chrome.runtime.lastError ? null : (dataUrl || null);
+      chrome.storage.local.set({ singleCaptureResult: { screenshot } });
+      chrome.tabs.query({}, tabs => {
+        tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { type: 'SINGLE_CAPTURE_DONE' }).catch(() => {}));
+      });
+    });
+    return false;
+  }
+
+  // Single capture: cancelled from editor
+  if (message.type === 'SINGLE_CAPTURE_CANCEL') {
+    chrome.tabs.query({}, tabs => {
+      tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { type: 'SINGLE_CAPTURE_DONE' }).catch(() => {}));
+    });
+    return false;
   }
 
   // Capture screenshot + save step — all handled here so content script

@@ -30,6 +30,7 @@ const ACTION_OPTS = [
 let importedSteps = [];
 let importedTitle = '操作手順書';
 let showUrl = localStorage.getItem('showUrl') !== 'false';
+let pendingSingleCaptureIdx = null;
 
 chkShowUrl.checked = showUrl;
 chkShowUrl.addEventListener('change', () => {
@@ -148,7 +149,24 @@ docTitleText.addEventListener('click', () => {
   });
 });
 
-btnCloseFile.addEventListener('click', () => {
+function showConfirm(message, sub) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('confirmOverlay');
+    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmSub').textContent = sub;
+    overlay.style.display = 'flex';
+    const ok     = document.getElementById('confirmOk');
+    const cancel = document.getElementById('confirmCancel');
+    const cleanup = result => { overlay.style.display = 'none'; resolve(result); };
+    ok.onclick     = () => cleanup(true);
+    cancel.onclick = () => cleanup(false);
+    overlay.onclick = e => { if (e.target === overlay) cleanup(false); };
+  });
+}
+
+btnCloseFile.addEventListener('click', async () => {
+  const ok = await showConfirm('手順書を閉じますか？', '未保存の編集内容は失われます');
+  if (!ok) return;
   importedSteps = [];
   toolbarFilename.style.display = 'none'; btnCloseFile.style.display = 'none';
   enabledCount.style.display = 'none'; chkAllLabel.style.display = 'none';
@@ -197,12 +215,16 @@ function renderSteps() {
       ? `<div class="step-img-wrap">
            <img class="step-img" src="${s.screenshot}" alt="step ${s.idx}">
            <div class="thumb-actions">
-             <button class="thumb-btn thumb-btn-rep" data-idx="${s.idx}">🔄 差し替え</button>
-             <button class="thumb-btn thumb-btn-del" data-idx="${s.idx}">🗑 削除</button>
+             <button class="thumb-btn thumb-btn-rep"    data-idx="${s.idx}">🔄 差し替え</button>
+             <button class="thumb-btn thumb-btn-paste"  data-idx="${s.idx}">📋 貼り付け</button>
+             <button class="thumb-btn thumb-btn-single" data-idx="${s.idx}">📸 1枚撮る</button>
+             <button class="thumb-btn thumb-btn-del"    data-idx="${s.idx}">🗑 削除</button>
            </div>
          </div>`
       : `<div class="thumb-actions" style="margin-top:8px">
-           <button class="thumb-btn thumb-btn-add" data-idx="${s.idx}">📷 スクショを追加</button>
+           <button class="thumb-btn thumb-btn-add"    data-idx="${s.idx}">📷 追加</button>
+           <button class="thumb-btn thumb-btn-paste"  data-idx="${s.idx}">📋 貼り付け</button>
+           <button class="thumb-btn thumb-btn-single" data-idx="${s.idx}">📸 1枚撮る</button>
          </div>`;
 
     const card = document.createElement('div');
@@ -245,6 +267,12 @@ function renderSteps() {
   stepsList.querySelectorAll('.memo-text').forEach(el => el.addEventListener('click', () => startMemoEdit(el)));
   stepsList.querySelectorAll('.thumb-btn-rep, .thumb-btn-add').forEach(btn => {
     btn.addEventListener('click', () => stepsList.querySelector(`.screenshot-input[data-idx="${btn.dataset.idx}"]`).click());
+  });
+  stepsList.querySelectorAll('.thumb-btn-paste').forEach(btn => {
+    btn.addEventListener('click', () => pasteScreenshot(+btn.dataset.idx));
+  });
+  stepsList.querySelectorAll('.thumb-btn-single').forEach(btn => {
+    btn.addEventListener('click', () => startSingleCapture(+btn.dataset.idx));
   });
   stepsList.querySelectorAll('.thumb-btn-del').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -379,6 +407,44 @@ function updateChkAll() {
   const all = importedSteps.every(s => s.enabled), none = importedSteps.every(s => !s.enabled);
   chkAll.checked = all; chkAll.indeterminate = !all && !none;
 }
+
+// ── Clipboard paste ────────────────────────────────────────────────────
+async function pasteScreenshot(idx) {
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      const imageType = item.types.find(t => t.startsWith('image/'));
+      if (imageType) {
+        const blob = await item.getType(imageType);
+        const url = await readAsDataURL(blob);
+        const s = importedSteps.find(x => x.idx === idx);
+        if (s) { s.screenshot = url; renderSteps(); showToast('📋 貼り付けました'); }
+        return;
+      }
+    }
+    showToast('⚠ クリップボードに画像がありません');
+  } catch (_) {
+    showToast('⚠ クリップボードへのアクセスに失敗しました');
+  }
+}
+
+// ── Single capture ─────────────────────────────────────────────────────
+function startSingleCapture(idx) {
+  pendingSingleCaptureIdx = idx;
+  chrome.runtime.sendMessage({ type: 'SINGLE_CAPTURE_START' });
+  showToast('📸 撮影したいページに切り替えてクリックしてください');
+}
+
+chrome.storage.onChanged.addListener((changes) => {
+  if (!changes.singleCaptureResult?.newValue) return;
+  const { screenshot } = changes.singleCaptureResult.newValue;
+  if (screenshot && pendingSingleCaptureIdx !== null) {
+    const s = importedSteps.find(x => x.idx === pendingSingleCaptureIdx);
+    if (s) { s.screenshot = screenshot; renderSteps(); showToast('📸 撮影しました'); }
+  }
+  pendingSingleCaptureIdx = null;
+  chrome.storage.local.remove('singleCaptureResult');
+});
 
 chkAll.addEventListener('change', () => {
   importedSteps.forEach(s => { s.enabled = chkAll.checked; });

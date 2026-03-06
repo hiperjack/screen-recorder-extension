@@ -7,6 +7,7 @@
   let stepCounter = 0;
   let highlightOverlay = null;
   let screenshotTiming = 'mousedown';
+  let singleCaptureMode = false;
 
   // ── Overlay highlight ────────────────────────────────────────────
   function createOverlay() {
@@ -177,8 +178,54 @@
     document.removeEventListener('change', onChange, true);
   }
 
+  // ── Single capture mode ───────────────────────────────────────────
+  let singleCaptureBadge = null;
+
+  function onSingleCaptureMouseDown(e) {
+    if (!singleCaptureMode || e.button !== 0) return;
+    singleCaptureMode = false;
+    document.removeEventListener('mousedown', onSingleCaptureMouseDown, true);
+    hideSingleCaptureBadge();
+    try { chrome.runtime.sendMessage({ type: 'SINGLE_CAPTURE_CLICK' }); } catch (_) {}
+  }
+
+  function showSingleCaptureBadge() {
+    if (singleCaptureBadge) return;
+    singleCaptureBadge = document.createElement('div');
+    Object.assign(singleCaptureBadge.style, {
+      position: 'fixed', bottom: '20px', left: '20px', zIndex: '2147483647',
+      background: 'rgba(74,158,255,0.92)', color: '#fff', padding: '8px 14px',
+      borderRadius: '20px', fontSize: '13px', fontFamily: 'sans-serif',
+      pointerEvents: 'none', backdropFilter: 'blur(8px)'
+    });
+    singleCaptureBadge.textContent = '👆 クリックでスクショを撮ります';
+    document.body.appendChild(singleCaptureBadge);
+  }
+
+  function hideSingleCaptureBadge() {
+    if (singleCaptureBadge) { singleCaptureBadge.remove(); singleCaptureBadge = null; }
+  }
+
+  function enterSingleCaptureMode() {
+    singleCaptureMode = true;
+    document.addEventListener('mousedown', onSingleCaptureMouseDown, true);
+    showSingleCaptureBadge();
+  }
+
+  function exitSingleCaptureMode() {
+    singleCaptureMode = false;
+    document.removeEventListener('mousedown', onSingleCaptureMouseDown, true);
+    hideSingleCaptureBadge();
+  }
+
   // ── Message handler ───────────────────────────────────────────────
   chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'SINGLE_CAPTURE_READY') {
+      enterSingleCaptureMode();
+    }
+    if (message.type === 'SINGLE_CAPTURE_DONE') {
+      exitSingleCaptureMode();
+    }
     if (message.type === 'RECORDING_STATE_CHANGED') {
       screenshotTiming = message.screenshotTiming || 'mousedown';
       isRecording = message.isRecording;
