@@ -30,6 +30,7 @@ const ACTION_OPTS = [
 // ── State ─────────────────────────────────────────────────────────────
 let importedSteps = [];
 let importedTitle = '操作手順書';
+let importedFilename = '';
 let showUrl = localStorage.getItem('showUrl') !== 'false';
 let pendingSingleCaptureIdx = null;
 
@@ -100,6 +101,7 @@ async function loadFolderFiles(fileList) {
 
 async function loadZipFile(file) {
   if (typeof JSZip === 'undefined') { showToast('⚠ JSZip の読み込みを待っています...'); return; }
+  importedFilename = file.name.replace(/\.zip$/i, '');
   try {
     const zip = await JSZip.loadAsync(file);
 
@@ -229,6 +231,25 @@ function showConfirm(message, sub) {
     ok.onclick     = () => cleanup(true);
     cancel.onclick = () => cleanup(false);
     overlay.onclick = e => { if (e.target === overlay) cleanup(false); };
+  });
+}
+
+// showSaveDialog: resolves to 'overwrite' | 'new' | 'skip' | null(cancel)
+function showSaveDialog(message, sub, skipLabel) {
+  return new Promise(resolve => {
+    const overlay   = document.getElementById('saveDialogOverlay');
+    const skipBtn   = document.getElementById('saveDialogSkip');
+    document.getElementById('saveDialogMessage').textContent = message;
+    document.getElementById('saveDialogSub').textContent = sub || '';
+    skipBtn.textContent = skipLabel || '保存せずに続ける';
+    skipBtn.style.display = skipLabel ? '' : 'none';
+    overlay.style.display = 'flex';
+    const cleanup = result => { overlay.style.display = 'none'; resolve(result); };
+    document.getElementById('saveDialogOverwrite').onclick = () => cleanup('overwrite');
+    document.getElementById('saveDialogNew').onclick      = () => cleanup('new');
+    skipBtn.onclick                                        = () => cleanup('skip');
+    document.getElementById('saveDialogCancel').onclick   = () => cleanup(null);
+    overlay.onclick = e => { if (e.target === overlay) cleanup(null); };
   });
 }
 
@@ -539,6 +560,14 @@ btnPreviewViewer.addEventListener('click', async () => {
   const active = importedSteps.filter(s => s.enabled);
   if (!active.length) { showToast('⚠ 出力対象のステップがありません'); return; }
   if (typeof JSZip === 'undefined') { showToast('⚠ JSZip の読み込みを待っています...'); return; }
+
+  const choice = await showSaveDialog('照会モードを開く前に保存しますか？', '', '保存せずに照会');
+  if (choice === null) return;
+  if (choice !== 'skip') {
+    const filename = choice === 'overwrite' ? importedFilename : `${importedTitle}_edited`;
+    await exportZip(active, filename);
+  }
+
   showToast('⏳ 照会モードを準備中...');
   try {
     const zip = new JSZip();
@@ -576,7 +605,10 @@ btnPreviewViewer.addEventListener('click', async () => {
 btnExport.addEventListener('click', async () => {
   const active = importedSteps.filter(s => s.enabled);
   if (!active.length) { showToast('⚠ 出力対象のステップがありません'); return; }
-  await exportZip(active, `${importedTitle}_edited`);
+  const choice = await showSaveDialog('保存方法を選択してください', '', null);
+  if (!choice) return;
+  const filename = choice === 'overwrite' ? importedFilename : `${importedTitle}_edited`;
+  await exportZip(active, filename);
 });
 
 async function exportZip(activeSteps, baseName) {
