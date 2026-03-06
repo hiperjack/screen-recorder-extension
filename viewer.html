@@ -10,22 +10,25 @@
   body { font-family: 'Noto Sans JP', sans-serif; background: #0f0f13; color: #e8e8f0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
   /* ── Toolbar ── */
-  .toolbar { position: relative; z-index: 10; background: #1a1a2e; border-bottom: 1px solid #2a2a3e; padding: 8px 16px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .toolbar { position: relative; z-index: 10; background: #1a1a2e; border-bottom: 1px solid #2a2a3e; padding: 10px 24px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   .toolbar-logo { width: 28px; height: 28px; background: linear-gradient(135deg, #4a9eff, #2a6abf); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
   .toolbar-title { font-size: 13px; font-weight: 700; color: #f0f0ff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 400px; }
   .toolbar-spacer { flex: 1; }
-  .btn { padding: 6px 12px; border: none; border-radius: 6px; font-family: inherit; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .btn { padding: 7px 14px; border: none; border-radius: 6px; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
   .btn-secondary { background: #1e1e30; color: #8080a0; border: 1px solid #2a2a3e; }
   .btn-secondary:hover { background: #252538; color: #a0a0c0; }
   .btn-edit { background: linear-gradient(135deg, #1e3a5f, #0d2137); color: #7ec8e3; border: 1px solid #1e4a6f; }
   .btn-edit:hover { background: linear-gradient(135deg, #254873, #12273f); }
 
   /* ── Load area ── */
-  .load-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 40px; }
-  .drop-zone { border: 2px dashed #2a2a4a; border-radius: 16px; padding: 48px 60px; cursor: pointer; transition: all 0.2s; background: #0d0d18; text-align: center; width: 100%; max-width: 480px; }
+  .load-area { flex: 1; overflow-y: auto; }
+  .load-content { max-width: 760px; margin: 60px auto; padding: 0 24px; }
+  .load-content h2 { font-size: 17px; font-weight: 700; color: #f0f0ff; margin-bottom: 6px; }
+  .load-content > p { font-size: 12px; color: #5a5a80; margin-bottom: 22px; }
+  .drop-zone { border: 2px dashed #2a2a4a; border-radius: 12px; padding: 28px; cursor: pointer; transition: all 0.2s; background: #0d0d18; text-align: center; margin-bottom: 10px; }
   .drop-zone:hover, .drop-zone.drag-over { border-color: #4a4a8a; background: #13132a; }
-  .dz-icon { font-size: 40px; display: block; margin-bottom: 12px; }
-  .drop-zone p { font-size: 13px; color: #5a5a80; line-height: 1.7; }
+  .drop-zone .dz-icon { font-size: 30px; display: block; margin-bottom: 8px; }
+  .drop-zone p { font-size: 12px; color: #5a5a80; }
   .drop-zone p strong { color: #9090b8; }
   .load-hint { font-size: 11px; color: #3a3a5a; }
 
@@ -43,6 +46,8 @@
   body.light-mode .btn-secondary { background: #ebebf5; color: #3a3a6a; border-color: #d0d0e0; }
   body.light-mode .btn-secondary:hover { background: #e0e0f0; }
   body.light-mode .btn-edit { background: linear-gradient(135deg, #d0e8f8, #b8d8f0); color: #1a4a7a; border-color: #90c0e0; }
+  body.light-mode .load-content h2 { color: #1a1a2e; }
+  body.light-mode .load-content > p { color: #7070a0; }
   body.light-mode .drop-zone { background: #f0f0f8; border-color: #c0c0d8; }
   body.light-mode .drop-zone:hover, body.light-mode .drop-zone.drag-over { background: #e8e8f5; border-color: #a0a0c8; }
   body.light-mode .drop-zone p { color: #9090b0; }
@@ -57,17 +62,20 @@
   <div class="toolbar-logo">👁</div>
   <span class="toolbar-title" id="docTitle" data-i18n="viewer.toolbar.default">照会モード</span>
   <div class="toolbar-spacer"></div>
-  <button class="btn btn-secondary" id="btnToggleTheme" title="テーマ切替">🌙</button>
-  <button class="btn btn-secondary" id="btnOpenFile" data-i18n="viewer.btn.open.file">📂 別のZIPを開く</button>
-  <button class="btn btn-edit" id="btnEdit" style="display:none" data-i18n="viewer.btn.edit">✏ エディターで編集</button>
+  <button class="btn btn-secondary" id="btnToggleTheme" style="padding:6px 12px;font-size:11px" title="テーマ切替">🌙</button>
+  <button class="btn btn-secondary" id="btnOpenFile" style="padding:6px 12px;font-size:11px" data-i18n="viewer.btn.open.file">📂 別のZIPを開く</button>
+  <button class="btn btn-edit" id="btnEdit" style="display:none;padding:6px 12px;font-size:11px" data-i18n="viewer.btn.edit">✏ エディターで編集</button>
 </div>
 
 <div class="load-area" id="loadArea">
-  <div class="drop-zone" id="dropZone">
-    <span class="dz-icon">📂</span>
-    <p><strong data-i18n="viewer.drop.strong">クリックまたはドラッグ＆ドロップ</strong><br><span data-i18n="viewer.drop.sub">手順書 ZIP ファイルをここに追加</span></p>
+  <div class="load-content">
+    <h2 data-i18n="viewer.load.h2">📂 手順書を読み込む</h2>
+    <p data-i18n="viewer.load.desc">この拡張機能でエクスポートした ZIP ファイルを選択してください</p>
+    <div class="drop-zone" id="dropZone">
+      <span class="dz-icon">📂</span>
+      <p><strong data-i18n="viewer.drop.strong">クリックまたはドラッグ＆ドロップ</strong><br><span data-i18n="viewer.drop.sub">手順書 ZIP ファイルをここに追加</span></p>
+    </div>
   </div>
-  <p class="load-hint" data-i18n="viewer.hint">手順書エディターでエクスポートした .zip ファイルを開きます</p>
 </div>
 
 <input type="file" id="fileInput" accept=".zip" style="display:none">
