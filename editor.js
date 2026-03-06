@@ -32,8 +32,13 @@ const ACTION_OPTS = [
 let importedSteps = [];
 let importedTitle = '操作手順書';
 let importedFilename = '';
+let sourceNavZip = null;       // original JSZip when a nav ZIP is loaded
+let sourceNavDocPrefix = '';   // e.g. 'doc_001'
 let showUrl = localStorage.getItem('showUrl') !== 'false';
 let pendingSingleCaptureIdx = null;
+let dragSrcArrayIdx = null;
+let navDocs = [];        // [{ prefix, path, title, steps }]  steps=null = not yet loaded
+let activeNavDocIdx = -1;
 
 chkShowUrl.checked = showUrl;
 chkShowUrl.addEventListener('change', () => {
@@ -112,7 +117,7 @@ async function loadZipFile(file) {
       if (!entry.dir && /^doc_\d+\/index\.html$/.test(relPath)) subDocPaths.push(relPath);
     });
     if (subDocPaths.length > 0) {
-      await showNavZipPicker(zip, subDocPaths.sort(), file.name);
+      await loadNavZip(zip, subDocPaths.sort(), file.name);
       return;
     }
 
@@ -137,71 +142,86 @@ async function loadZipFile(file) {
   } catch (err) { showToast(t('toast.zip.fail')); console.error(err); }
 }
 
-async function showNavZipPicker(zip, subDocPaths, zipName) {
-  const docs = await Promise.all(subDocPaths.map(async path => {
+async function loadNavZip(zip, subDocPaths, zipName) {
+  sourceNavZip = zip;
+  sourceNavDocPrefix = '';
+  navDocs = await Promise.all(subDocPaths.map(async path => {
     const html = await zip.file(path).async('string');
     const title = new DOMParser().parseFromString(html, 'text/html').querySelector('h1')?.textContent?.replace(/^📋\s*/, '').trim() || path;
-    return { path, title };
+    return { path, prefix: path.replace('/index.html', ''), title, steps: null };
   }));
+  activeNavDocIdx = -1;
+  showLoadedUI(zipName, true);
+  await activateNavDoc(0);
+  showToast(t('toast.loaded', { name: zipName, n: importedSteps.length }));
+}
 
-  return new Promise(resolve => {
-    const overlay = document.createElement('div');
-    overlay.className = 'confirm-overlay';
-    overlay.innerHTML = `
-      <div class="confirm-box" style="max-width:480px;width:90%">
-        <div class="confirm-msg" style="text-align:left">
-          <div style="font-size:14px;font-weight:700;margin-bottom:6px">📚 手順書を選択</div>
-          <div style="font-size:12px;color:#7070a0;margin-bottom:14px">複数の手順書が含まれたZIPです。編集する手順書を選んでください。</div>
-          <div id="navPickerList" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto">
-            ${docs.map((d, i) => `<button class="nav-pick-btn" data-i="${i}" style="text-align:left;padding:10px 14px;background:#13132a;border:1px solid #2a2a4a;border-radius:8px;color:#c0c0e0;font-family:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:10px"><span style="color:#e94560;font-weight:700;font-size:11px">${String(i+1).padStart(2,'0')}</span><span>${esc(d.title)}</span></button>`).join('')}
-          </div>
-        </div>
-        <div class="confirm-actions" style="margin-top:16px">
-          <button class="confirm-btn confirm-btn-cancel" id="navPickerCancel">キャンセル</button>
-        </div>
-      </div>`;
-    document.body.appendChild(overlay);
+async function activateNavDoc(idx) {
+  // Save current doc state before switching
+  if (activeNavDocIdx >= 0) {
+    navDocs[activeNavDocIdx].steps = importedSteps.map(s => ({...s}));
+    navDocs[activeNavDocIdx].title = importedTitle;
+  }
+  activeNavDocIdx = idx;
+  const doc = navDocs[idx];
 
-    overlay.querySelectorAll('.nav-pick-btn').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#1a1a38'; btn.style.borderColor = '#4a4a8a'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#13132a'; btn.style.borderColor = '#2a2a4a'; });
-      btn.addEventListener('click', async () => {
-        overlay.remove();
-        const d = docs[+btn.dataset.i];
-        const prefix = d.path.replace('/index.html', '');
-        parseImportedHTML(await zip.file(d.path).async('string'));
-        const MIME = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', webp:'image/webp', gif:'image/gif' };
-        const dataUrls = {};
-        const tasks = [];
-        zip.forEach((rel, entry) => {
-          if (!entry.dir && rel.startsWith(prefix + '/screenshots/')) {
-            const fname = rel.slice(prefix.length + 1); // "screenshots/step_001.png"
-            const mime = MIME[rel.split('.').pop().toLowerCase()] || 'image/png';
-            tasks.push(entry.async('base64').then(b64 => { dataUrls[fname] = `data:${mime};base64,${b64}`; }));
-          }
-        });
-        await Promise.all(tasks);
-        importedSteps.forEach(s => {
-          if (s.screenshot && !s.screenshot.startsWith('data:')) s.screenshot = dataUrls[s.screenshot] || null;
-        });
-        showLoadedUI(zipName);
-        resolve();
-      });
+  if (doc.steps !== null) {
+    importedSteps = doc.steps.map(s => ({...s}));
+    importedTitle = doc.title;
+  } else {
+    const prefix = doc.prefix;
+    parseImportedHTML(await sourceNavZip.file(doc.path).async('string'));
+    const MIME = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', webp:'image/webp', gif:'image/gif' };
+    const dataUrls = {};
+    const tasks = [];
+    sourceNavZip.forEach((rel, entry) => {
+      if (!entry.dir && rel.startsWith(prefix + '/screenshots/')) {
+        const fname = rel.slice(prefix.length + 1);
+        const mime = MIME[rel.split('.').pop().toLowerCase()] || 'image/png';
+        tasks.push(entry.async('base64').then(b64 => { dataUrls[fname] = `data:${mime};base64,${b64}`; }));
+      }
     });
+    await Promise.all(tasks);
+    importedSteps.forEach(s => {
+      if (s.screenshot && !s.screenshot.startsWith('data:')) s.screenshot = dataUrls[s.screenshot] || null;
+    });
+    doc.steps = importedSteps.map(s => ({...s}));
+    doc.title = importedTitle;
+  }
 
-    overlay.querySelector('#navPickerCancel').addEventListener('click', () => { overlay.remove(); resolve(); });
+  renderNavSidebar();
+  docTitleText.textContent = importedTitle;
+  renderSteps();
+}
+
+function renderNavSidebar() {
+  const list = document.getElementById('navDocList');
+  if (!list) return;
+  list.innerHTML = '';
+  navDocs.forEach((doc, i) => {
+    const btn = document.createElement('button');
+    btn.className = `nav-doc-btn${i === activeNavDocIdx ? ' active' : ''}`;
+    btn.innerHTML = `<span class="nav-doc-num">${String(i + 1).padStart(2, '0')}</span><span class="nav-doc-title">${esc(doc.title)}</span>`;
+    btn.addEventListener('click', async () => {
+      if (i === activeNavDocIdx) return;
+      await activateNavDoc(i);
+    });
+    list.appendChild(btn);
   });
 }
 
-function showLoadedUI(name) {
+function showLoadedUI(name, isNav = false) {
   toolbarFilename.textContent = name; toolbarFilename.style.display = '';
   btnCloseFile.style.display = ''; enabledCount.style.display = '';
   chkAllLabel.style.display = ''; chkUrlLabel.style.display = '';
   btnExport.style.display = ''; btnPreviewViewer.style.display = '';
   loadArea.style.display = 'none'; stepsArea.style.display = '';
-  docTitleText.textContent = importedTitle;
-  showToast(t('toast.loaded', { name, n: importedSteps.length }));
-  renderSteps();
+  document.getElementById('navSidebar').style.display = isNav ? 'flex' : 'none';
+  if (!isNav) {
+    docTitleText.textContent = importedTitle;
+    showToast(t('toast.loaded', { name, n: importedSteps.length }));
+    renderSteps();
+  }
 }
 
 docTitleText.addEventListener('click', () => {
@@ -210,6 +230,10 @@ docTitleText.addEventListener('click', () => {
   docTitleText.replaceWith(inp); inp.focus(); inp.select();
   function commit() {
     importedTitle = inp.value.trim() || importedTitle;
+    if (activeNavDocIdx >= 0) {
+      navDocs[activeNavDocIdx].title = importedTitle;
+      renderNavSidebar();
+    }
     docTitleText.textContent = importedTitle;
     inp.replaceWith(docTitleText);
   }
@@ -235,21 +259,18 @@ function showConfirm(message, sub) {
   });
 }
 
-// showSaveDialog: resolves to 'overwrite' | 'new' | 'skip' | null(cancel)
-function showSaveDialog(message, sub, skipLabel) {
+// showSaveDialog: resolves to 'save' | 'skip' | null(cancel)
+function showSaveDialog(message, skipLabel) {
   return new Promise(resolve => {
-    const overlay   = document.getElementById('saveDialogOverlay');
-    const skipBtn   = document.getElementById('saveDialogSkip');
+    const overlay = document.getElementById('saveDialogOverlay');
+    const skipBtn = document.getElementById('saveDialogSkip');
     document.getElementById('saveDialogMessage').textContent = message;
-    document.getElementById('saveDialogSub').textContent = sub || '';
-    skipBtn.textContent = skipLabel || '保存せずに続ける';
     skipBtn.style.display = skipLabel ? '' : 'none';
     overlay.style.display = 'flex';
     const cleanup = result => { overlay.style.display = 'none'; resolve(result); };
-    document.getElementById('saveDialogOverwrite').onclick = () => cleanup('overwrite');
-    document.getElementById('saveDialogNew').onclick      = () => cleanup('new');
-    skipBtn.onclick                                        = () => cleanup('skip');
-    document.getElementById('saveDialogCancel').onclick   = () => cleanup(null);
+    document.getElementById('saveDialogNew').onclick    = () => cleanup('save');
+    skipBtn.onclick                                      = () => cleanup('skip');
+    document.getElementById('saveDialogCancel').onclick = () => cleanup(null);
     overlay.onclick = e => { if (e.target === overlay) cleanup(null); };
   });
 }
@@ -258,6 +279,9 @@ btnCloseFile.addEventListener('click', async () => {
   const ok = await showConfirm(t('confirm.close.file.title'), t('confirm.close.file.sub'));
   if (!ok) return;
   importedSteps = [];
+  sourceNavZip = null; sourceNavDocPrefix = '';
+  navDocs = []; activeNavDocIdx = -1;
+  document.getElementById('navSidebar').style.display = 'none';
   toolbarFilename.style.display = 'none'; btnCloseFile.style.display = 'none';
   enabledCount.style.display = 'none'; chkAllLabel.style.display = 'none';
   chkUrlLabel.style.display = 'none'; btnExport.style.display = 'none'; btnPreviewViewer.style.display = 'none';
@@ -321,6 +345,7 @@ function renderSteps() {
     card.className = `step-card${s.enabled ? '' : ' disabled'}`;
     card.dataset.idx = s.idx;
     card.innerHTML = `
+      <div class="drag-handle" draggable="true" title="ドラッグして並び替え">⠿</div>
       <div class="step-left">
         <label class="toggle"><input type="checkbox" class="step-chk" data-idx="${s.idx}" ${s.enabled ? 'checked' : ''}><span class="toggle-track"></span></label>
         <div class="step-num">${s.idx}</div>
@@ -340,6 +365,27 @@ function renderSteps() {
         <input type="file" class="screenshot-input" accept="image/*" data-idx="${s.idx}">
       </div>`;
     stepsList.appendChild(card);
+  });
+
+  // ── Drag-and-drop reorder ─────────────────────────────────────────
+  stepsList.querySelectorAll('.step-card').forEach((card, arrayIdx) => {
+    const handle = card.querySelector('.drag-handle');
+    handle.addEventListener('dragstart', e => {
+      dragSrcArrayIdx = arrayIdx;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => { card.style.opacity = '0.4'; }, 0);
+    });
+    handle.addEventListener('dragend', () => { card.style.opacity = ''; });
+    card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('drag-over'); });
+    card.addEventListener('dragleave', e => { if (!card.contains(e.relatedTarget)) card.classList.remove('drag-over'); });
+    card.addEventListener('drop', e => {
+      e.preventDefault(); card.classList.remove('drag-over');
+      if (dragSrcArrayIdx === null || dragSrcArrayIdx === arrayIdx) { dragSrcArrayIdx = null; return; }
+      const [moved] = importedSteps.splice(dragSrcArrayIdx, 1);
+      importedSteps.splice(arrayIdx, 0, moved);
+      dragSrcArrayIdx = null;
+      renderSteps();
+    });
   });
 
   stepsList.querySelectorAll('.order-btn').forEach(btn => {
@@ -558,17 +604,32 @@ chkAll.addEventListener('change', () => {
 
 // ── Preview in viewer ─────────────────────────────────────────────────
 btnPreviewViewer.addEventListener('click', async () => {
-  const active = importedSteps.filter(s => s.enabled);
-  if (!active.length) { showToast(t('toast.no.steps')); return; }
   if (typeof JSZip === 'undefined') { showToast(t('toast.jszip.wait')); return; }
 
-  const choice = await showSaveDialog(t('save.dialog.title.viewer'), '', t('save.dialog.skip'));
-  if (choice === null) return;
-  if (choice !== 'skip') {
-    const filename = choice === 'overwrite' ? importedFilename : `${importedTitle}_edited`;
-    await exportZip(active, filename);
+  if (sourceNavZip) {
+    // Nav ZIP: open full nav ZIP (with all docs) in viewer
+    const choice = await showSaveDialog(t('save.dialog.title.viewer'), t('save.dialog.skip'));
+    if (choice === null) return;
+    if (choice === 'save') await exportNavZip(importedFilename || importedTitle);
+    showToast(t('toast.viewer.opening'));
+    try {
+      const blob = await buildNavZip();
+      const blobUrl = URL.createObjectURL(blob);
+      const viewerBase = chrome.runtime?.getURL ? chrome.runtime.getURL('viewer.html') : 'viewer.html';
+      const viewerUrl = `${viewerBase}?zipUrl=${encodeURIComponent(blobUrl)}&filename=${encodeURIComponent((importedFilename || importedTitle) + '.zip')}`;
+      window.open(viewerUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      showToast(t('toast.viewer.opened'));
+    } catch (err) { showToast(t('toast.viewer.fail')); console.error(err); }
+    return;
   }
 
+  // Single doc
+  const active = importedSteps.filter(s => s.enabled);
+  if (!active.length) { showToast(t('toast.no.steps')); return; }
+  const choice = await showSaveDialog(t('save.dialog.title.viewer'), t('save.dialog.skip'));
+  if (choice === null) return;
+  if (choice === 'save') await exportZip(active, importedFilename || importedTitle);
   showToast(t('toast.viewer.opening'));
   try {
     const zip = new JSZip();
@@ -606,11 +667,67 @@ btnPreviewViewer.addEventListener('click', async () => {
 btnExport.addEventListener('click', async () => {
   const active = importedSteps.filter(s => s.enabled);
   if (!active.length) { showToast(t('toast.no.steps')); return; }
-  const choice = await showSaveDialog(t('save.dialog.title.save'), '', null);
-  if (!choice) return;
-  const filename = choice === 'overwrite' ? importedFilename : `${importedTitle}_edited`;
-  await exportZip(active, filename);
+  if (sourceNavZip) {
+    await exportNavZip(importedFilename || importedTitle);
+  } else {
+    await exportZip(active, importedFilename || importedTitle);
+  }
 });
+
+async function buildNavZip() {
+  // Save current doc state
+  if (activeNavDocIdx >= 0) {
+    navDocs[activeNavDocIdx].steps = importedSteps.map(s => ({...s}));
+    navDocs[activeNavDocIdx].title = importedTitle;
+  }
+
+  const newZip = new JSZip();
+  const now = new Date().toLocaleString('ja-JP');
+
+  const masterEntry = sourceNavZip.file('index.html');
+  if (masterEntry) newZip.file('index.html', await masterEntry.async('uint8array'));
+
+  for (const doc of navDocs) {
+    const prefix = doc.prefix + '/';
+    if (doc.steps === null) {
+      const tasks = [];
+      sourceNavZip.forEach((relPath, entry) => {
+        if (!entry.dir && relPath.startsWith(prefix)) {
+          tasks.push(entry.async('uint8array').then(data => { newZip.file(relPath, data); }));
+        }
+      });
+      await Promise.all(tasks);
+    } else {
+      const activeSteps = doc.steps.filter(s => s.enabled);
+      const cardsHTML = activeSteps.map((s, i) => {
+        const num = String(i + 1).padStart(3, '0');
+        let screenshotSrc = null;
+        if (s.screenshot) {
+          if (s.screenshot.startsWith('data:')) {
+            const fname = `step_${num}.${mimeToExt(base64MimeType(s.screenshot))}`;
+            newZip.file(prefix + 'screenshots/' + fname, base64ToUint8(s.screenshot));
+            screenshotSrc = `screenshots/${fname}`;
+          } else {
+            screenshotSrc = s.screenshot;
+          }
+        }
+        return buildStepCardHTML(i + 1, s.actionLabel, s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
+      }).join('');
+      newZip.file(prefix + 'index.html', buildPageHTML(doc.title, now, activeSteps.length, cardsHTML));
+    }
+  }
+
+  return newZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+}
+
+async function exportNavZip(baseName) {
+  if (typeof JSZip === 'undefined') { showToast(t('toast.jszip.wait')); return; }
+  const blob = await buildNavZip();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `${baseName}.zip`; a.click();
+  URL.revokeObjectURL(a.href);
+  showToast(t('toast.saved', { name: baseName, n: importedSteps.filter(s => s.enabled).length }));
+}
 
 async function exportZip(activeSteps, baseName) {
   if (typeof JSZip === 'undefined') { showToast(t('toast.jszip.wait')); return; }
@@ -746,6 +863,7 @@ function showLightbox(src) {
   }
 })();
 
+function formatDatetime() { const d = new Date(), p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}`; }
 function esc(str) { return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function tryHostname(url) { try { const u = new URL(url); return u.hostname + u.pathname; } catch(_) { return url || ''; } }
 function base64MimeType(d) { return d.match(/data:([^;]+);/)?.[1] || 'image/png'; }

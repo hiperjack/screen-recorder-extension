@@ -88,6 +88,11 @@
   .level-btn:disabled { opacity: 0.2; cursor: not-allowed; }
   .level-badge { font-size: 9px; color: #5a5a70; font-weight: 700; min-width: 26px; text-align: center; white-space: nowrap; }
 
+  /* ── Drag handle ── */
+  .drag-handle { cursor: grab; color: #3a3a5a; font-size: 18px; display: flex; align-items: center; flex-shrink: 0; user-select: none; padding-right: 2px; line-height: 1; }
+  .drag-handle:hover { color: #6060a0; }
+  .doc-item.drag-over { border-color: #e94560; background: #1a0d12; }
+  .doc-section-item.drag-over { border-color: #e94560; }
 
   /* ── Toast ── */
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: #1e1e30; color: #b0ffd0; padding: 8px 18px; border-radius: 20px; font-size: 12px; border: 1px solid #2a5a3a; transition: transform 0.3s; pointer-events: none; white-space: nowrap; z-index: 200; }
@@ -143,6 +148,7 @@
   <div class="toolbar-spacer"></div>
   <span class="doc-count" id="docCount" style="display:none"></span>
   <button class="btn btn-secondary" id="btnToggleTheme" style="padding:6px 12px;font-size:11px" title="テーマ切替">🌙</button>
+  <button class="btn btn-secondary" id="btnOpenViewer" style="padding:6px 12px;font-size:11px" data-i18n="popup.tab.viewer">👁 照会</button>
   <button class="btn btn-export" id="btnExport" style="padding:6px 12px;font-size:11px" disabled data-i18n="finalizer.btn.export">💾 ナビゲーションZIPを作成</button>
 </div>
 

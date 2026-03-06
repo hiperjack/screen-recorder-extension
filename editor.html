@@ -7,10 +7,10 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Noto Sans JP', sans-serif; background: #0f0f13; color: #e8e8f0; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: #0f0f13; color: #e8e8f0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
   /* ── Toolbar ── */
-  .toolbar { position: sticky; top: 0; z-index: 100; background: #1a1a2e; border-bottom: 1px solid #2a2a3e; padding: 10px 24px; display: flex; align-items: center; gap: 10px; }
+  .toolbar { z-index: 100; background: #1a1a2e; border-bottom: 1px solid #2a2a3e; padding: 10px 24px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   .toolbar-logo { width: 28px; height: 28px; background: linear-gradient(135deg, #e94560, #c62a47); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
   .toolbar-title { font-size: 13px; font-weight: 700; color: #f0f0ff; margin-right: 4px; white-space: nowrap; }
   .toolbar-filename { font-size: 11px; color: #7070a0; background: #0d0d18; padding: 3px 8px; border-radius: 4px; border: 1px solid #2a2a3e; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -44,6 +44,18 @@
   .order-btn:hover:not(:disabled) { background: #252538; color: #9090b8; border-color: #3a3a5a; }
   .order-btn:disabled { opacity: 0.2; cursor: not-allowed; }
 
+  /* ── Editor body / sidebar ── */
+  .editor-body { display: flex; flex: 1; overflow: hidden; }
+  .editor-main { flex: 1; overflow-y: auto; min-width: 0; }
+  .nav-sidebar { width: 220px; min-width: 160px; background: #13131f; border-right: 1px solid #1a1a2e; overflow-y: auto; display: flex; flex-direction: column; flex-shrink: 0; }
+  .nav-sidebar-header { padding: 10px 14px; font-size: 10px; font-weight: 700; color: #4a4a70; border-bottom: 1px solid #1a1a2e; letter-spacing: 0.08em; text-transform: uppercase; flex-shrink: 0; }
+  .nav-doc-list { flex: 1; overflow-y: auto; }
+  .nav-doc-btn { display: flex; width: 100%; text-align: left; padding: 9px 12px; background: transparent; border: none; border-bottom: 1px solid #0f0f18; border-left: 3px solid transparent; color: #7070a0; font-family: inherit; font-size: 11px; cursor: pointer; transition: all 0.15s; align-items: flex-start; gap: 8px; }
+  .nav-doc-btn:hover { background: #1a1a2e; color: #c0c0e0; border-left-color: #2a2a4a; }
+  .nav-doc-btn.active { background: #1a1a2e; color: #f0f0ff; border-left-color: #e94560; }
+  .nav-doc-num { font-size: 10px; color: #e94560; font-weight: 700; flex-shrink: 0; padding-top: 1px; }
+  .nav-doc-title { flex: 1; line-height: 1.4; text-align: left; word-break: break-all; }
+
   /* ── Load area ── */
   .load-area { max-width: 760px; margin: 60px auto; padding: 0 24px; }
   .load-area h2 { font-size: 17px; font-weight: 700; color: #f0f0ff; margin-bottom: 6px; }
@@ -60,6 +72,9 @@
   .step-card { background: #13131f; border: 1px solid #1e1e30; border-radius: 10px; margin-bottom: 12px; display: flex; gap: 14px; padding: 14px 16px; transition: border-color 0.15s; }
   .step-card:hover { border-color: #2a2a4a; }
   .step-card.disabled { opacity: 0.35; }
+  .step-card.drag-over { border-color: #e94560; background: #1a0d12; }
+  .drag-handle { cursor: grab; color: #3a3a5a; font-size: 18px; display: flex; align-items: center; flex-shrink: 0; user-select: none; padding-right: 2px; line-height: 1; }
+  .drag-handle:hover { color: #6060a0; }
   .step-left { display: flex; flex-direction: column; align-items: center; gap: 10px; flex-shrink: 0; padding-top: 2px; }
   .step-num { width: 34px; height: 34px; background: linear-gradient(135deg, #e94560, #c62a47); color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
   .step-body { flex: 1; min-width: 0; }
@@ -173,6 +188,11 @@
   body.light-mode .confirm-box p { color: #1a1a2e; }
   body.light-mode .confirm-box .confirm-sub { color: #9090b0; }
   body.light-mode .confirm-btn-cancel { background: #f0f0f8; color: #5a5a8a; border-color: #d0d0e0; }
+  body.light-mode .nav-sidebar { background: #f5f5f8; border-right-color: #e0e0ea; }
+  body.light-mode .nav-sidebar-header { color: #9090b0; border-bottom-color: #e0e0ea; }
+  body.light-mode .nav-doc-btn { color: #9090b0; border-bottom-color: #f0f0f5; border-left-color: transparent; }
+  body.light-mode .nav-doc-btn:hover { background: #ebebf5; color: #3a3a6a; border-left-color: #c0c0d8; }
+  body.light-mode .nav-doc-btn.active { background: #ebebf5; color: #1a1a2e; border-left-color: #e94560; }
 </style>
 </head>
 <body>
@@ -196,6 +216,14 @@
   <button class="btn btn-secondary" id="btnPreviewViewer" style="display:none;padding:6px 12px;font-size:11px" data-i18n="editor.btn.preview">👁 照会</button>
   <button class="btn btn-export" id="btnExport" style="display:none;padding:6px 12px;font-size:11px" disabled data-i18n="editor.btn.save">💾 保存 (.zip)</button>
 </div>
+
+<!-- Editor body -->
+<div class="editor-body">
+  <div id="navSidebar" class="nav-sidebar" style="display:none">
+    <div class="nav-sidebar-header" data-i18n="editor.nav.header">📚 手順書一覧</div>
+    <div id="navDocList" class="nav-doc-list"></div>
+  </div>
+  <div class="editor-main">
 
 <!-- Load area -->
 <div id="loadArea" class="load-area">
@@ -221,6 +249,9 @@
   <div id="stepsList"></div>
 </div>
 
+  </div><!-- /.editor-main -->
+</div><!-- /.editor-body -->
+
 <div class="toast" id="toast"></div>
 
 <div class="confirm-overlay" id="confirmOverlay" style="display:none">
@@ -239,9 +270,8 @@
     <p id="saveDialogMessage"></p>
     <p class="confirm-sub" id="saveDialogSub"></p>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-      <button class="confirm-btn confirm-btn-ok" id="saveDialogOverwrite" data-i18n="save.dialog.overwrite">💾 上書き保存</button>
-      <button class="confirm-btn" id="saveDialogNew" style="background:linear-gradient(135deg,#1e3a5f,#0d2137);color:#7ec8e3;border:1px solid #1e4a6f" data-i18n="save.dialog.new">💾 新しく保存</button>
-      <button class="confirm-btn confirm-btn-cancel" id="saveDialogSkip" style="display:none" data-i18n="save.dialog.skip">保存せずに続ける</button>
+      <button class="confirm-btn confirm-btn-ok" id="saveDialogNew" data-i18n="save.dialog.new">💾 保存する</button>
+      <button class="confirm-btn confirm-btn-cancel" id="saveDialogSkip" style="display:none" data-i18n="save.dialog.skip">保存せずに照会</button>
       <button class="confirm-btn confirm-btn-cancel" id="saveDialogCancel" style="font-size:11px;opacity:0.7" data-i18n="save.dialog.cancel">キャンセル</button>
     </div>
   </div>

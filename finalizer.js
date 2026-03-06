@@ -27,9 +27,14 @@ btnToggleTheme.addEventListener('click', () => {
   applyTheme();
 });
 
+document.getElementById('btnOpenViewer').addEventListener('click', () => {
+  window.open(chrome.runtime?.getURL ? chrome.runtime.getURL('viewer.html') : 'viewer.html', '_blank');
+});
+
 // ── State ─────────────────────────────────────────────────────────────
 // docs: [{ type:'doc', title, stepCount, zip, enabled, origName } | { type:'section', label }]
 let docs = [];
+let dndSrc = null;
 
 // ── File loading ──────────────────────────────────────────────────────
 dropZone.addEventListener('click', () => fileInput.click());
@@ -89,6 +94,7 @@ function renderDocList() {
       item.dataset.i = i;
       item.dataset.level = level;
       item.innerHTML = `
+        <div class="drag-handle" draggable="true" title="ドラッグして並び替え">⠿</div>
         <span class="section-icon">📁</span>
         <span class="section-label-span" data-i="${i}">${esc(d.label)}</span>
         <div class="level-controls">
@@ -106,6 +112,7 @@ function renderDocList() {
       item.className = `doc-item${d.enabled ? '' : ' disabled'}`;
       item.dataset.i = i;
       item.innerHTML = `
+        <div class="drag-handle" draggable="true" title="ドラッグして並び替え">⠿</div>
         <label class="toggle"><input type="checkbox" class="doc-chk" data-i="${i}" ${d.enabled ? 'checked' : ''}><span class="toggle-track"></span></label>
         <div class="doc-num-badge">${String(docNum).padStart(2, '0')}</div>
         <div class="doc-body">
@@ -120,6 +127,24 @@ function renderDocList() {
         </div>`;
     }
     docList.appendChild(item);
+
+    const handle = item.querySelector('.drag-handle');
+    handle.addEventListener('dragstart', e => {
+      dndSrc = i;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => { item.style.opacity = '0.4'; }, 0);
+    });
+    handle.addEventListener('dragend', () => { item.style.opacity = ''; });
+    item.addEventListener('dragover', e => { e.preventDefault(); item.classList.add('drag-over'); });
+    item.addEventListener('dragleave', e => { if (!item.contains(e.relatedTarget)) item.classList.remove('drag-over'); });
+    item.addEventListener('drop', e => {
+      e.preventDefault(); item.classList.remove('drag-over');
+      if (dndSrc === null || dndSrc === i) { dndSrc = null; return; }
+      const [moved] = docs.splice(dndSrc, 1);
+      docs.splice(i, 0, moved);
+      dndSrc = null;
+      renderDocList(); updateExportBtn();
+    });
   });
 
   docList.querySelectorAll('.doc-chk').forEach(chk => {
@@ -255,7 +280,7 @@ async function exportMasterZip(allDocs) {
     const blob = await masterZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${navTitle}_navigation.zip`;
+    a.download = `${navTitle}_Navi_${formatDatetime()}.zip`;
     a.click();
     URL.revokeObjectURL(a.href);
 
@@ -432,6 +457,7 @@ async function viewDoc(i) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
+function formatDatetime() { const d = new Date(), p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}`; }
 function esc(str) { return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2800); }
 

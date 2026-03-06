@@ -38,14 +38,14 @@ const I18N = {
     'editor.folder.btn': '📁 フォルダで読み込む（index.html + screenshots/）',
     'editor.select.all': 'すべて選択',
     'editor.show.url': 'URL表示',
+    'editor.nav.header': '📚 手順書一覧',
     'editor.btn.finalizer': '📑 最終化',
     'editor.btn.preview': '👁 照会',
     'editor.btn.save': '💾 保存 (.zip)',
     // Save dialog
     'save.dialog.title.save': '保存方法を選択してください',
     'save.dialog.title.viewer': '照会モードを開く前に保存しますか？',
-    'save.dialog.overwrite': '💾 上書き保存',
-    'save.dialog.new': '💾 新しく保存',
+    'save.dialog.new': '💾 保存する',
     'save.dialog.skip': '保存せずに照会',
     'save.dialog.cancel': 'キャンセル',
     // Confirm dialog
@@ -157,14 +157,14 @@ const I18N = {
     'editor.folder.btn': '📁 Load folder (index.html + screenshots/)',
     'editor.select.all': 'Select all',
     'editor.show.url': 'Show URL',
+    'editor.nav.header': '📚 Procedures',
     'editor.btn.finalizer': '📑 Finalize',
     'editor.btn.preview': '👁 View',
     'editor.btn.save': '💾 Save (.zip)',
     // Save dialog
     'save.dialog.title.save': 'Choose save method',
     'save.dialog.title.viewer': 'Save before opening viewer?',
-    'save.dialog.overwrite': '💾 Overwrite',
-    'save.dialog.new': '💾 Save as new',
+    'save.dialog.new': '💾 Save',
     'save.dialog.skip': 'Open without saving',
     'save.dialog.cancel': 'Cancel',
     // Confirm dialog
