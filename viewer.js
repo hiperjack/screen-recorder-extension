@@ -73,34 +73,120 @@ async function renderZip(zip, name) {
   const htmlEntry = zip.file('index.html');
   if (!htmlEntry) { showToast('⚠ index.html が見つかりません'); return; }
   let html = await htmlEntry.async('string');
-  const parsedDoc = new DOMParser().parseFromString(html, 'text/html');
-  const extractedTitle = parsedDoc.querySelector('h1')?.textContent?.replace(/^📋\s*/, '').trim() || name;
 
-  // Replace image paths with blob URLs
-  const imgReplacements = {};
-  const tasks = [];
+  // Detect nav ZIP (contains sub-docs like doc_001/index.html)
+  const subDocPaths = [];
   zip.forEach((relPath, entry) => {
-    if (!entry.dir && /\.(png|jpg|jpeg|gif|webp)$/i.test(relPath)) {
-      tasks.push(entry.async('blob').then(blob => {
-        const url = URL.createObjectURL(blob);
-        blobUrls.push(url);
-        imgReplacements[relPath] = url;
-      }));
-    }
+    if (!entry.dir && /^doc_\d+\/index\.html$/.test(relPath)) subDocPaths.push(relPath);
   });
-  await Promise.all(tasks);
 
-  for (const [path, url] of Object.entries(imgReplacements)) {
-    html = html.replaceAll(path, url);
+  if (subDocPaths.length > 0) {
+    // Nav ZIP: process each sub-doc and replace relative paths with blob URLs
+    const docBlobMap = {};
+    for (const docPath of subDocPaths.sort()) {
+      const prefix = docPath.replace('/index.html', ''); // e.g. "doc_001"
+      let docHtml = await zip.file(docPath).async('string');
+
+      const imgTasks = [];
+      zip.forEach((relPath, entry) => {
+        if (!entry.dir && relPath.startsWith(prefix + '/') && /\.(png|jpg|jpeg|gif|webp)$/i.test(relPath)) {
+          imgTasks.push(entry.async('blob').then(blob => {
+            const url = URL.createObjectURL(blob);
+            blobUrls.push(url);
+            const relToDoc = relPath.slice(prefix.length + 1);
+            docHtml = docHtml.replaceAll(relToDoc, url);
+          }));
+        }
+      });
+      await Promise.all(imgTasks);
+
+      const docUrl = URL.createObjectURL(new Blob([docHtml], { type: 'text/html;charset=utf-8' }));
+      blobUrls.push(docUrl);
+      docBlobMap[docPath] = docUrl;
+    }
+
+    // Replace sub-doc paths in nav HTML with blob URLs
+    for (const [docPath, blobUrl] of Object.entries(docBlobMap)) {
+      html = html.replaceAll(docPath, blobUrl);
+    }
+
+    // MV3 CSP blocks inline scripts and javascript: URIs in blob URL documents.
+    // Solution: remove all inline JS from nav HTML, then wire events from viewer.js
+    // using contentFrame.contentDocument (same-origin access — both are chrome-extension://,
+    // so no cross-origin restriction applies).
+    html = html.replace(/href="javascript:[^"]*"/g, 'href="#"');
+    html = html.replace(/ onclick="[^"]*"/g, '');
+    html = html.replace(/<script[\s\S]*?<\/script>/g, '');
+
+    docTitle.textContent = new DOMParser().parseFromString(html, 'text/html').querySelector('title')?.textContent || name;
+
+    const htmlUrl = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    blobUrls.push(htmlUrl);
+
+    // Wire nav interactions from viewer.js after iframe loads
+    contentFrame.addEventListener('load', () => {
+      const d = contentFrame.contentDocument;
+      if (!d) return;
+      // Doc links
+      d.querySelectorAll('.doc-link[data-src]').forEach(el => {
+        el.addEventListener('click', e => {
+          e.preventDefault();
+          d.querySelectorAll('.doc-link').forEach(l => l.classList.remove('active'));
+          el.classList.add('active');
+          const f = d.getElementById('docFrame');
+          if (f) f.src = el.dataset.src;
+        });
+      });
+      // Sidebar toggle
+      const toggleBtn = d.getElementById('sidebarToggle');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+          const sb = d.getElementById('sidebar');
+          if (!sb) return;
+          sb.classList.toggle('collapsed');
+          toggleBtn.textContent = sb.classList.contains('collapsed') ? '▶' : '◀';
+        });
+      }
+      // Section headers
+      d.querySelectorAll('.section-hdr').forEach(el => {
+        el.addEventListener('click', () => el.closest('.section-group')?.classList.toggle('closed'));
+      });
+      // Activate first link
+      d.querySelector('.doc-link[data-src]')?.classList.add('active');
+    }, { once: true });
+
+    contentFrame.src = htmlUrl;
+    contentFrame.style.display = '';
+    loadArea.style.display = 'none';
+    btnEdit.style.display = '';
+    showToast('✅ 読み込みました');
+    return;
+  } else {
+    // Single doc ZIP
+    const imgReplacements = {};
+    const tasks = [];
+    zip.forEach((relPath, entry) => {
+      if (!entry.dir && /\.(png|jpg|jpeg|gif|webp)$/i.test(relPath)) {
+        tasks.push(entry.async('blob').then(blob => {
+          const url = URL.createObjectURL(blob);
+          blobUrls.push(url);
+          imgReplacements[relPath] = url;
+        }));
+      }
+    });
+    await Promise.all(tasks);
+
+    for (const [path, url] of Object.entries(imgReplacements)) {
+      html = html.replaceAll(path, url);
+    }
+
+    docTitle.textContent = new DOMParser().parseFromString(html, 'text/html').querySelector('h1')?.textContent?.replace(/^📋\s*/, '').trim() || name;
   }
 
-  const htmlBlob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const htmlUrl = URL.createObjectURL(htmlBlob);
+  const htmlUrl = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
   blobUrls.push(htmlUrl);
 
   contentFrame.src = htmlUrl;
-  docTitle.textContent = extractedTitle;
-
   contentFrame.style.display = '';
   loadArea.style.display = 'none';
   btnEdit.style.display = '';

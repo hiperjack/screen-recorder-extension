@@ -91,11 +91,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // Single capture: start → broadcast READY to all tabs
+  // Single capture: start → inject content script if needed, then broadcast READY
   if (message.type === 'SINGLE_CAPTURE_START') {
-    chrome.storage.local.remove('singleCaptureResult');
+    chrome.storage.session.remove('singleCaptureResult');
     chrome.tabs.query({}, tabs => {
-      tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { type: 'SINGLE_CAPTURE_READY' }).catch(() => {}));
+      tabs.forEach(tab => {
+        if (!tab.url || /^(chrome|chrome-extension|about|data):/.test(tab.url)) {
+          // Skip non-injectable tabs
+          return;
+        }
+        // Inject content script if not already running (idempotent due to guard in content.js)
+        chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] })
+          .catch(() => {})
+          .finally(() => {
+            chrome.tabs.sendMessage(tab.id, { type: 'SINGLE_CAPTURE_READY' }).catch(() => {});
+          });
+      });
     });
     sendResponse({ ok: true });
     return true;
@@ -106,7 +117,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const windowId = sender.tab?.windowId;
     chrome.tabs.captureVisibleTab(windowId, { format: 'png', quality: 85 }, dataUrl => {
       const screenshot = chrome.runtime.lastError ? null : (dataUrl || null);
-      chrome.storage.local.set({ singleCaptureResult: { screenshot } });
+      chrome.storage.session.set({ singleCaptureResult: { screenshot } });
       chrome.tabs.query({}, tabs => {
         tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { type: 'SINGLE_CAPTURE_DONE' }).catch(() => {}));
       });

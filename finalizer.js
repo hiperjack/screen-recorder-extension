@@ -249,6 +249,7 @@ async function exportMasterZip(allDocs) {
     const firstDocSrc = firstDoc ? `${firstDoc._prefix}/index.html` : '';
 
     masterZip.file('index.html', buildNavPageHTML(navTitle, allDocs, firstDocSrc));
+    masterZip.file('nav.js', NAV_PAGE_SCRIPT);
 
     const blob = await masterZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
     const a = document.createElement('a');
@@ -268,6 +269,36 @@ async function exportMasterZip(allDocs) {
     for (const d of allDocs) delete d._prefix;
   }
 }
+
+// ── Nav page script (external file so viewer's MV3 CSP allows it) ─────
+const NAV_PAGE_SCRIPT = `
+function navigate(el, src) {
+  document.querySelectorAll('.doc-link').forEach(function(l) { l.classList.remove('active'); });
+  el.classList.add('active');
+  document.getElementById('docFrame').src = src;
+}
+function toggleSidebar() {
+  var sidebar = document.getElementById('sidebar');
+  var btn = document.getElementById('sidebarToggle');
+  sidebar.classList.toggle('collapsed');
+  btn.textContent = sidebar.classList.contains('collapsed') ? '\\u25b6' : '\\u25c0';
+}
+function toggleSection(hdr) {
+  hdr.closest('.section-group').classList.toggle('closed');
+}
+(function() {
+  var firstLink = document.querySelector('.doc-link[data-src]');
+  if (firstLink) firstLink.classList.add('active');
+  var sidebarBtn = document.getElementById('sidebarToggle');
+  if (sidebarBtn) sidebarBtn.addEventListener('click', toggleSidebar);
+  document.querySelectorAll('.doc-link[data-src]').forEach(function(el) {
+    el.addEventListener('click', function(e) { e.preventDefault(); navigate(this, this.dataset.src); });
+  });
+  document.querySelectorAll('.section-hdr').forEach(function(el) {
+    el.addEventListener('click', function() { toggleSection(this); });
+  });
+})();
+`;
 
 // ── Navigation page builder ───────────────────────────────────────────
 function buildNavLinks(allDocs) {
@@ -291,7 +322,7 @@ function buildNavLinks(allDocs) {
       closeToLevel(level);
       const ind = '  '.repeat(depth);
       html += `${ind}<div class="section-group level-${level}">\n`;
-      html += `${ind}  <div class="section-hdr" onclick="toggleSection(this)"><span class="section-arrow">▾</span><span>${esc(d.label)}</span></div>\n`;
+      html += `${ind}  <div class="section-hdr"><span class="section-arrow">▾</span><span>${esc(d.label)}</span></div>\n`;
       html += `${ind}  <div class="section-docs">\n`;
       depth++;
       openLevels.push(level);
@@ -307,7 +338,7 @@ function buildNavLinks(allDocs) {
 
 function navLinkHTML(num, title, prefix) {
   const src = `${prefix}/index.html`;
-  return `<a class="doc-link" href="javascript:void(0)" data-src="${src}" onclick="navigate(this,'${src}')"><span class="doc-num">${String(num).padStart(2, '0')}</span>${esc(title)}</a>\n`;
+  return `<a class="doc-link" href="#" data-src="${src}"><span class="doc-num">${String(num).padStart(2, '0')}</span>${esc(title)}</a>\n`;
 }
 
 function buildNavPageHTML(title, allDocs, firstDocSrc) {
@@ -332,6 +363,8 @@ function buildNavPageHTML(title, allDocs, firstDocSrc) {
   .sidebar-toggle:hover{color:#a0a0d0;border-color:#3a3a5a}
   .sidebar-body{flex:1;overflow:hidden;display:flex;flex-direction:column}
   .sidebar.collapsed .sidebar-title,.sidebar.collapsed .sidebar-body{display:none}
+  .sidebar.collapsed .sidebar-header{padding:8px 8px;justify-content:center}
+  .sidebar.collapsed .sidebar-logo{display:none}
   .sidebar-list{flex:1;overflow-y:auto;padding:8px 0}
   .sidebar-list::-webkit-scrollbar{width:4px}
   .sidebar-list::-webkit-scrollbar-thumb{background:#2a2a3e;border-radius:2px}
@@ -361,7 +394,7 @@ function buildNavPageHTML(title, allDocs, firstDocSrc) {
     <div class="sidebar-header">
       <div class="sidebar-logo">📋</div>
       <div class="sidebar-title">${esc(title)}</div>
-      <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="メニューを開閉">◀</button>
+      <button class="sidebar-toggle" id="sidebarToggle" title="メニューを開閉">◀</button>
     </div>
     <div class="sidebar-body">
       <div class="sidebar-list">
@@ -373,24 +406,7 @@ ${navLinks}
     <iframe id="docFrame" src="${firstDocSrc}"></iframe>
   </div>
 </div>
-<script>
-  function navigate(el, src) {
-    document.querySelectorAll('.doc-link').forEach(l => l.classList.remove('active'));
-    el.classList.add('active');
-    document.getElementById('docFrame').src = src;
-  }
-  function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const btn = document.getElementById('sidebarToggle');
-    sidebar.classList.toggle('collapsed');
-    btn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
-  }
-  function toggleSection(hdr) {
-    hdr.closest('.section-group').classList.toggle('closed');
-  }
-  // Activate first link on load
-  document.querySelector('.doc-link')?.classList.add('active');
-<\/script>
+<script src="nav.js"></script>
 </body>
 </html>`;
 }

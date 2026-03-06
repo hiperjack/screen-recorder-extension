@@ -101,6 +101,17 @@ async function loadZipFile(file) {
   if (typeof JSZip === 'undefined') { showToast('⚠ JSZip の読み込みを待っています...'); return; }
   try {
     const zip = await JSZip.loadAsync(file);
+
+    // Detect nav ZIP (multiple docs)
+    const subDocPaths = [];
+    zip.forEach((relPath, entry) => {
+      if (!entry.dir && /^doc_\d+\/index\.html$/.test(relPath)) subDocPaths.push(relPath);
+    });
+    if (subDocPaths.length > 0) {
+      await showNavZipPicker(zip, subDocPaths.sort(), file.name);
+      return;
+    }
+
     const htmlEntry = zip.file('index.html');
     if (!htmlEntry) { showToast('⚠ ZIP 内に index.html が見つかりません'); return; }
     parseImportedHTML(await htmlEntry.async('string'));
@@ -120,6 +131,62 @@ async function loadZipFile(file) {
     });
     showLoadedUI(file.name);
   } catch (err) { showToast('⚠ ZIP の読み込みに失敗しました'); console.error(err); }
+}
+
+async function showNavZipPicker(zip, subDocPaths, zipName) {
+  const docs = await Promise.all(subDocPaths.map(async path => {
+    const html = await zip.file(path).async('string');
+    const title = new DOMParser().parseFromString(html, 'text/html').querySelector('h1')?.textContent?.replace(/^📋\s*/, '').trim() || path;
+    return { path, title };
+  }));
+
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-box" style="max-width:480px;width:90%">
+        <div class="confirm-msg" style="text-align:left">
+          <div style="font-size:14px;font-weight:700;margin-bottom:6px">📚 手順書を選択</div>
+          <div style="font-size:12px;color:#7070a0;margin-bottom:14px">複数の手順書が含まれたZIPです。編集する手順書を選んでください。</div>
+          <div id="navPickerList" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto">
+            ${docs.map((d, i) => `<button class="nav-pick-btn" data-i="${i}" style="text-align:left;padding:10px 14px;background:#13132a;border:1px solid #2a2a4a;border-radius:8px;color:#c0c0e0;font-family:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:10px"><span style="color:#e94560;font-weight:700;font-size:11px">${String(i+1).padStart(2,'0')}</span><span>${esc(d.title)}</span></button>`).join('')}
+          </div>
+        </div>
+        <div class="confirm-actions" style="margin-top:16px">
+          <button class="confirm-btn confirm-btn-cancel" id="navPickerCancel">キャンセル</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    overlay.querySelectorAll('.nav-pick-btn').forEach(btn => {
+      btn.addEventListener('mouseenter', () => { btn.style.background = '#1a1a38'; btn.style.borderColor = '#4a4a8a'; });
+      btn.addEventListener('mouseleave', () => { btn.style.background = '#13132a'; btn.style.borderColor = '#2a2a4a'; });
+      btn.addEventListener('click', async () => {
+        overlay.remove();
+        const d = docs[+btn.dataset.i];
+        const prefix = d.path.replace('/index.html', '');
+        parseImportedHTML(await zip.file(d.path).async('string'));
+        const MIME = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', webp:'image/webp', gif:'image/gif' };
+        const dataUrls = {};
+        const tasks = [];
+        zip.forEach((rel, entry) => {
+          if (!entry.dir && rel.startsWith(prefix + '/screenshots/')) {
+            const fname = rel.slice(prefix.length + 1); // "screenshots/step_001.png"
+            const mime = MIME[rel.split('.').pop().toLowerCase()] || 'image/png';
+            tasks.push(entry.async('base64').then(b64 => { dataUrls[fname] = `data:${mime};base64,${b64}`; }));
+          }
+        });
+        await Promise.all(tasks);
+        importedSteps.forEach(s => {
+          if (s.screenshot && !s.screenshot.startsWith('data:')) s.screenshot = dataUrls[s.screenshot] || null;
+        });
+        showLoadedUI(zipName);
+        resolve();
+      });
+    });
+
+    overlay.querySelector('#navPickerCancel').addEventListener('click', () => { overlay.remove(); resolve(); });
+  });
 }
 
 function showLoadedUI(name) {
@@ -444,8 +511,8 @@ function startSingleCapture(idx) {
   showToast('📸 撮影したいページに切り替えてクリックしてください');
 }
 
-chrome.storage.onChanged.addListener((changes) => {
-  if (!changes.singleCaptureResult?.newValue) return;
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'session' || !changes.singleCaptureResult?.newValue) return;
   const { screenshot } = changes.singleCaptureResult.newValue;
   if (pendingSingleCaptureIdx !== null) {
     if (screenshot) {
@@ -456,7 +523,7 @@ chrome.storage.onChanged.addListener((changes) => {
     }
   }
   pendingSingleCaptureIdx = null;
-  chrome.storage.local.remove('singleCaptureResult').catch(() => {});
+  chrome.storage.session.remove('singleCaptureResult').catch(() => {});
 });
 
 chkAll.addEventListener('change', () => {
