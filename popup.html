@@ -119,9 +119,11 @@
 <div class="header">
   <div class="logo">📋</div>
   <div>
-    <h1>操作手順書ジェネレーター</h1>
-    <p>クリック・入力操作を自動キャプチャ</p>
+    <h1 data-i18n="app.name">操作手順書ジェネレーター</h1>
+    <p data-i18n="popup.subtitle">クリック・入力操作を自動キャプチャ</p>
   </div>
+  <div style="flex:1"></div>
+  <button id="btnLang" style="background:none;border:1px solid #2a2a4a;color:#6060a0;border-radius:4px;font-size:10px;font-family:inherit;padding:3px 8px;cursor:pointer;flex-shrink:0">EN</button>
 </div>
 
 <div class="status-bar">
@@ -138,27 +140,27 @@
     <span id="recordLabel">記録を開始する</span>
   </button>
   <div class="timing-row">
-    <span>📷 スクショ</span>
+    <span data-i18n="popup.screenshot.label">📷 スクショ</span>
     <label class="timing-opt" id="timingClickLabel">
-      <input type="radio" name="timing" value="click" id="timingClick"> 離した瞬間
+      <input type="radio" name="timing" value="click" id="timingClick"> <span data-i18n="popup.timing.click">離した瞬間</span>
     </label>
     <label class="timing-opt selected" id="timingMousedownLabel">
-      <input type="radio" name="timing" value="mousedown" id="timingMousedown" checked> 押した瞬間
+      <input type="radio" name="timing" value="mousedown" id="timingMousedown" checked> <span data-i18n="popup.timing.mousedown">押した瞬間</span>
     </label>
   </div>
 </div>
 
 <div class="tabs">
-  <button class="tab-btn active" data-tab="manage">📝 ステップ管理</button>
-  <button class="tab-btn" id="btnOpenEditor">📂 編集</button>
-  <button class="tab-btn" id="btnOpenViewer">👁 照会</button>
-  <button class="tab-btn" id="btnOpenFinalizer">📑 最終化</button>
+  <button class="tab-btn active" data-tab="manage" data-i18n="popup.tab.manage">📝 ステップ管理</button>
+  <button class="tab-btn" id="btnOpenEditor" data-i18n="popup.tab.editor">📂 編集</button>
+  <button class="tab-btn" id="btnOpenViewer" data-i18n="popup.tab.viewer">👁 照会</button>
+  <button class="tab-btn" id="btnOpenFinalizer" data-i18n="popup.tab.finalizer">📑 最終化</button>
 </div>
 
 <!-- Tab: Manage -->
 <div class="tab-panel active" id="tab-manage">
   <div class="select-all-bar" id="selectAllBar" style="display:none">
-    <label><input type="checkbox" id="chkAll" checked> すべて選択</label>
+    <label><input type="checkbox" id="chkAll" checked> <span data-i18n="popup.select.all">すべて選択</span></label>
     <span class="enabled-count" id="enabledCount"></span>
   </div>
   <div id="stepsListContainer">
@@ -170,23 +172,24 @@
 
   <div class="export-settings">
     <div class="setting-row">
-      <label>タイトル</label>
-      <input type="text" id="docTitleInput" placeholder="操作手順書">
+      <label data-i18n="popup.title.label">タイトル</label>
+      <input type="text" id="docTitleInput" data-i18n="popup.title.placeholder" data-i18n-target="placeholder" placeholder="操作手順書">
     </div>
     <div class="setting-row">
-      <label>URL表示</label>
+      <label data-i18n="popup.show.url">URL表示</label>
       <label class="chk-label">
-        <input type="checkbox" id="chkShowUrl" checked> 表示する
+        <input type="checkbox" id="chkShowUrl" checked> <span data-i18n="popup.show.url.on">表示する</span>
       </label>
     </div>
     <div class="btn-row">
-      <button class="btn btn-secondary" id="btnClear" disabled>🗑 クリア</button>
-      <button class="btn btn-export" id="btnExport" disabled>⬇ エクスポート</button>
+      <button class="btn btn-secondary" id="btnClear" disabled data-i18n="popup.btn.clear">🗑 クリア</button>
+      <button class="btn btn-export" id="btnExport" disabled data-i18n="popup.btn.export">⬇ エクスポート</button>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
+<script src="i18n.js"></script>
 <script src="jszip.min.js"></script>
 <script src="popup.js"></script>
 </body>

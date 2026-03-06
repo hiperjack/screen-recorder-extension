@@ -139,37 +139,36 @@
 <!-- Toolbar -->
 <div class="toolbar">
   <div class="toolbar-logo">📑</div>
-  <span class="toolbar-title">手順書 最終化</span>
+  <span class="toolbar-title" data-i18n="finalizer.page.title">手順書 最終化</span>
   <div class="toolbar-spacer"></div>
   <span class="doc-count" id="docCount" style="display:none"></span>
   <button class="btn btn-secondary" id="btnToggleTheme" style="padding:6px 12px;font-size:11px" title="テーマ切替">🌙</button>
-  <button class="btn btn-export" id="btnExport" style="padding:6px 12px;font-size:11px" disabled>💾 ナビゲーションZIPを作成</button>
+  <button class="btn btn-export" id="btnExport" style="padding:6px 12px;font-size:11px" disabled data-i18n="finalizer.btn.export">💾 ナビゲーションZIPを作成</button>
 </div>
 
 <!-- Main area -->
 <div class="main-area">
   <div class="nav-title-row">
-    <label>ナビゲーションのタイトル</label>
-    <input type="text" id="navTitleInput" class="nav-title-input" value="操作手順書" placeholder="手順書のタイトル">
+    <label data-i18n="finalizer.nav.label">ナビゲーションのタイトル</label>
+    <input type="text" id="navTitleInput" class="nav-title-input" data-i18n="finalizer.nav.placeholder" data-i18n-target="placeholder" placeholder="手順書のタイトル">
   </div>
 
   <div class="drop-zone" id="dropZone">
     <span class="dz-icon">📂</span>
-    <p><strong>クリックまたはドラッグ＆ドロップ</strong><br>手順書 ZIP ファイル（複数可）をここに追加</p>
+    <p><strong data-i18n="finalizer.drop.strong">クリックまたはドラッグ＆ドロップ</strong><br><span data-i18n="finalizer.drop.sub">手順書 ZIP ファイル（複数可）をここに追加</span></p>
   </div>
   <input type="file" id="fileInput" accept=".zip" multiple style="display:none">
-  <button class="btn-add" id="btnAdd">＋ ZIPファイルを追加</button>
+  <button class="btn-add" id="btnAdd" data-i18n="finalizer.btn.add">＋ ZIPファイルを追加</button>
 
   <div class="section-header">
-    <span>読み込んだ手順書</span>
-    <button class="btn-add-section" id="btnAddSection">＋ セクション追加</button>
+    <span data-i18n="finalizer.docs.header">読み込んだ手順書</span>
+    <button class="btn-add-section" id="btnAddSection" data-i18n="finalizer.btn.add.section">＋ セクション追加</button>
   </div>
-  <div id="docList">
-    <div class="empty-hint">手順書 ZIP をドロップするか、「＋ ZIPファイルを追加」で追加してください</div>
-  </div>
+  <div id="docList"></div>
 </div>
 
 <div class="toast" id="toast"></div>
+<script src="i18n.js"></script>
 <script src="jszip.min.js"></script>
 <script src="finalizer.js"></script>
 </body>

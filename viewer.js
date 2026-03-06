@@ -1,4 +1,5 @@
 // viewer.js — standalone ZIP viewer (照会モード)
+applyI18n();
 
 // ── DOM ───────────────────────────────────────────────────────────────
 const loadArea     = document.getElementById('loadArea');
@@ -44,22 +45,22 @@ btnOpenFile.addEventListener('click', () => fileInput.click());
 
 function loadFile(file) {
   if (!file.name.toLowerCase().endsWith('.zip')) {
-    showToast('⚠ .zip ファイルを選択してください');
+    showToast(t('toast.zip.only'));
     return;
   }
   loadZipSource(file, file.name);
 }
 
 async function loadZipSource(source, name) {
-  if (typeof JSZip === 'undefined') { showToast('⚠ JSZip の読み込みを待っています...'); return; }
-  showToast('⏳ 読み込み中...');
+  if (typeof JSZip === 'undefined') { showToast(t('toast.jszip.wait')); return; }
+  showToast(t('toast.viewer.loading'));
   try {
     const zip = await JSZip.loadAsync(source);
     currentZip = zip;
     currentFilename = name;
     await renderZip(zip, name);
   } catch (err) {
-    showToast('⚠ ZIPの読み込みに失敗しました');
+    showToast(t('toast.viewer.zip.fail'));
     console.error(err);
   }
 }
@@ -71,7 +72,7 @@ async function renderZip(zip, name) {
   blobUrls = [];
 
   const htmlEntry = zip.file('index.html');
-  if (!htmlEntry) { showToast('⚠ index.html が見つかりません'); return; }
+  if (!htmlEntry) { showToast(t('toast.viewer.no.index')); return; }
   let html = await htmlEntry.async('string');
 
   // Detect nav ZIP (contains sub-docs like doc_001/index.html)
@@ -182,7 +183,7 @@ async function renderZip(zip, name) {
     contentFrame.style.display = '';
     loadArea.style.display = 'none';
     btnEdit.style.display = '';
-    showToast('✅ 読み込みました');
+    showToast(t('toast.viewer.loaded'));
     return;
   } else {
     // Single doc ZIP
@@ -237,7 +238,7 @@ async function renderZip(zip, name) {
 // ── Open in editor ─────────────────────────────────────────────────────
 btnEdit.addEventListener('click', async () => {
   if (!currentZip) return;
-  showToast('⏳ エディターを準備中...');
+  showToast(t('toast.editor.opening'));
   try {
     const blob = await currentZip.generateAsync({ type: 'blob' });
     const blobUrl = URL.createObjectURL(blob);
@@ -246,9 +247,9 @@ btnEdit.addEventListener('click', async () => {
     window.open(editorUrl, '_blank');
     // Keep blob URL alive long enough for editor to fetch it
     setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-    showToast('✅ エディターを開きました');
+    showToast(t('toast.editor.opened'));
   } catch (err) {
-    showToast('⚠ エディターを開けませんでした');
+    showToast(t('toast.editor.fail'));
     console.error(err);
   }
 });
@@ -259,13 +260,13 @@ btnEdit.addEventListener('click', async () => {
   const zipUrl = params.get('zipUrl');
   const filename = params.get('filename');
   if (!zipUrl || !filename) return;
-  showToast('⏳ 読み込み中...');
+  showToast(t('toast.viewer.loading'));
   try {
     const response = await fetch(zipUrl);
     const blob = await response.blob();
     await loadZipSource(blob, decodeURIComponent(filename));
   } catch (err) {
-    showToast('⚠ ZIPの読み込みに失敗しました');
+    showToast(t('toast.viewer.zip.fail'));
     console.error(err);
   }
 })();

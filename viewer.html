@@ -55,19 +55,19 @@
 
 <div class="toolbar">
   <div class="toolbar-logo">👁</div>
-  <span class="toolbar-title" id="docTitle">照会モード</span>
+  <span class="toolbar-title" id="docTitle" data-i18n="viewer.toolbar.default">照会モード</span>
   <div class="toolbar-spacer"></div>
   <button class="btn btn-secondary" id="btnToggleTheme" title="テーマ切替">🌙</button>
-  <button class="btn btn-secondary" id="btnOpenFile">📂 別のZIPを開く</button>
-  <button class="btn btn-edit" id="btnEdit" style="display:none">✏ エディターで編集</button>
+  <button class="btn btn-secondary" id="btnOpenFile" data-i18n="viewer.btn.open.file">📂 別のZIPを開く</button>
+  <button class="btn btn-edit" id="btnEdit" style="display:none" data-i18n="viewer.btn.edit">✏ エディターで編集</button>
 </div>
 
 <div class="load-area" id="loadArea">
   <div class="drop-zone" id="dropZone">
     <span class="dz-icon">📂</span>
-    <p><strong>クリックまたはドラッグ＆ドロップ</strong><br>手順書 ZIP ファイルをここに追加</p>
+    <p><strong data-i18n="viewer.drop.strong">クリックまたはドラッグ＆ドロップ</strong><br><span data-i18n="viewer.drop.sub">手順書 ZIP ファイルをここに追加</span></p>
   </div>
-  <p class="load-hint">手順書エディターでエクスポートした .zip ファイルを開きます</p>
+  <p class="load-hint" data-i18n="viewer.hint">手順書エディターでエクスポートした .zip ファイルを開きます</p>
 </div>
 
 <input type="file" id="fileInput" accept=".zip" style="display:none">
@@ -75,6 +75,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="i18n.js"></script>
 <script src="jszip.min.js"></script>
 <script src="viewer.js"></script>
 </body>

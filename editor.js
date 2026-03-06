@@ -1,4 +1,5 @@
 // editor.js — full-page step editor
+applyI18n();
 
 // ── DOM ───────────────────────────────────────────────────────────────
 const dropZone        = document.getElementById('dropZone');
@@ -70,7 +71,7 @@ fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fi
 
 function loadFile(file) {
   if (file.name.split('.').pop().toLowerCase() === 'zip') loadZipFile(file);
-  else showToast('⚠ .zip ファイルを選択してください');
+  else showToast(t('toast.zip.only'));
 }
 
 btnPickFolder.addEventListener('click', () => folderInput.click());
@@ -83,7 +84,7 @@ async function loadFolderFiles(fileList) {
   const files = [...fileList];
   const top = files[0]?.webkitRelativePath.split('/')[0] || '';
   const htmlFile = files.find(f => f.webkitRelativePath === `${top}/index.html`);
-  if (!htmlFile) { showToast('⚠ フォルダ内に index.html が見つかりません'); return; }
+  if (!htmlFile) { showToast(t('toast.folder.no.index')); return; }
 
   parseImportedHTML(await readAsText(htmlFile));
 
@@ -100,7 +101,7 @@ async function loadFolderFiles(fileList) {
 }
 
 async function loadZipFile(file) {
-  if (typeof JSZip === 'undefined') { showToast('⚠ JSZip の読み込みを待っています...'); return; }
+  if (typeof JSZip === 'undefined') { showToast(t('toast.jszip.wait')); return; }
   importedFilename = file.name.replace(/\.zip$/i, '');
   try {
     const zip = await JSZip.loadAsync(file);
@@ -116,7 +117,7 @@ async function loadZipFile(file) {
     }
 
     const htmlEntry = zip.file('index.html');
-    if (!htmlEntry) { showToast('⚠ ZIP 内に index.html が見つかりません'); return; }
+    if (!htmlEntry) { showToast(t('toast.no.index')); return; }
     parseImportedHTML(await htmlEntry.async('string'));
 
     const MIME = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', webp:'image/webp', gif:'image/gif' };
@@ -133,7 +134,7 @@ async function loadZipFile(file) {
       if (s.screenshot && !s.screenshot.startsWith('data:')) s.screenshot = dataUrls[s.screenshot] || null;
     });
     showLoadedUI(file.name);
-  } catch (err) { showToast('⚠ ZIP の読み込みに失敗しました'); console.error(err); }
+  } catch (err) { showToast(t('toast.zip.fail')); console.error(err); }
 }
 
 async function showNavZipPicker(zip, subDocPaths, zipName) {
@@ -199,7 +200,7 @@ function showLoadedUI(name) {
   btnExport.style.display = ''; btnPreviewViewer.style.display = '';
   loadArea.style.display = 'none'; stepsArea.style.display = '';
   docTitleText.textContent = importedTitle;
-  showToast(`📂 ${name} を読み込みました（${importedSteps.length} ステップ）`);
+  showToast(t('toast.loaded', { name, n: importedSteps.length }));
   renderSteps();
 }
 
@@ -254,7 +255,7 @@ function showSaveDialog(message, sub, skipLabel) {
 }
 
 btnCloseFile.addEventListener('click', async () => {
-  const ok = await showConfirm('手順書を閉じますか？', '未保存の編集内容は失われます');
+  const ok = await showConfirm(t('confirm.close.file.title'), t('confirm.close.file.sub'));
   if (!ok) return;
   importedSteps = [];
   toolbarFilename.style.display = 'none'; btnCloseFile.style.display = 'none';
@@ -366,7 +367,7 @@ function renderSteps() {
   stepsList.querySelectorAll('.thumb-btn-del').forEach(btn => {
     btn.addEventListener('click', () => {
       const s = importedSteps.find(x => x.idx === +btn.dataset.idx);
-      if (s) { s.screenshot = null; renderSteps(); showToast('🗑 削除しました'); }
+      if (s) { s.screenshot = null; renderSteps(); showToast(t('toast.screenshot.deleted')); }
     });
   });
   stepsList.querySelectorAll('.screenshot-input').forEach(input => {
@@ -374,7 +375,7 @@ function renderSteps() {
       if (!input.files[0]) return;
       readAsDataURL(input.files[0]).then(url => {
         const s = importedSteps.find(x => x.idx === +input.dataset.idx);
-        if (s) { s.screenshot = url; renderSteps(); showToast('✅ 差し替えました'); }
+        if (s) { s.screenshot = url; renderSteps(); showToast(t('toast.screenshot.replaced')); }
       });
     });
   });
@@ -403,7 +404,7 @@ function addNewStep() {
     enabled: true,
   });
   renderSteps();
-  showToast('✅ 新規ステップを追加しました');
+  showToast(t('toast.step.new.added'));
   stepsList.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
@@ -504,33 +505,33 @@ async function pasteScreenshot(idx) {
   try {
     const items = await navigator.clipboard.read();
     for (const item of items) {
-      const imageType = item.types.find(t => t.startsWith('image/'));
+      const imageType = item.types.find(tp => tp.startsWith('image/'));
       if (imageType) {
         const blob = await item.getType(imageType);
         const url = await readAsDataURL(blob);
         const s = importedSteps.find(x => x.idx === idx);
-        if (s) { s.screenshot = url; renderSteps(); showToast('📋 貼り付けました'); }
+        if (s) { s.screenshot = url; renderSteps(); showToast(t('toast.screenshot.pasted')); }
         return;
       }
     }
-    showToast('⚠ クリップボードに画像がありません');
+    showToast(t('toast.paste.fail'));
   } catch (_) {
-    showToast('⚠ クリップボードへのアクセスに失敗しました');
+    showToast(t('toast.paste.fail'));
   }
 }
 
 // ── Single capture ─────────────────────────────────────────────────────
 function startSingleCapture(idx) {
-  if (!chrome.runtime?.id) { showToast('⚠ 拡張機能を再読み込みしてください'); return; }
+  if (!chrome.runtime?.id) { showToast(t('toast.ext.reload')); return; }
   pendingSingleCaptureIdx = idx;
   try {
     chrome.runtime.sendMessage({ type: 'SINGLE_CAPTURE_START' }).catch(() => {});
   } catch (_) {
     pendingSingleCaptureIdx = null;
-    showToast('⚠ 接続エラー。ページを再読み込みしてください');
+    showToast(t('toast.conn.error'));
     return;
   }
-  showToast('📸 撮影したいページに切り替えてクリックしてください');
+  showToast(t('toast.capture.shooting'));
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -539,9 +540,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (pendingSingleCaptureIdx !== null) {
     if (screenshot) {
       const s = importedSteps.find(x => x.idx === pendingSingleCaptureIdx);
-      if (s) { s.screenshot = screenshot; renderSteps(); showToast('📸 撮影しました'); }
+      if (s) { s.screenshot = screenshot; renderSteps(); showToast(t('toast.capture.shot')); }
     } else {
-      showToast('⚠ スクリーンショットの取得に失敗しました');
+      showToast(t('toast.capture.fail'));
     }
   }
   pendingSingleCaptureIdx = null;
@@ -558,17 +559,17 @@ chkAll.addEventListener('change', () => {
 // ── Preview in viewer ─────────────────────────────────────────────────
 btnPreviewViewer.addEventListener('click', async () => {
   const active = importedSteps.filter(s => s.enabled);
-  if (!active.length) { showToast('⚠ 出力対象のステップがありません'); return; }
-  if (typeof JSZip === 'undefined') { showToast('⚠ JSZip の読み込みを待っています...'); return; }
+  if (!active.length) { showToast(t('toast.no.steps')); return; }
+  if (typeof JSZip === 'undefined') { showToast(t('toast.jszip.wait')); return; }
 
-  const choice = await showSaveDialog('照会モードを開く前に保存しますか？', '', '保存せずに照会');
+  const choice = await showSaveDialog(t('save.dialog.title.viewer'), '', t('save.dialog.skip'));
   if (choice === null) return;
   if (choice !== 'skip') {
     const filename = choice === 'overwrite' ? importedFilename : `${importedTitle}_edited`;
     await exportZip(active, filename);
   }
 
-  showToast('⏳ 照会モードを準備中...');
+  showToast(t('toast.viewer.opening'));
   try {
     const zip = new JSZip();
     const shots = zip.folder('screenshots');
@@ -594,9 +595,9 @@ btnPreviewViewer.addEventListener('click', async () => {
     const viewerUrl = `${viewerBase}?zipUrl=${encodeURIComponent(blobUrl)}&filename=${encodeURIComponent(importedTitle + '.zip')}`;
     window.open(viewerUrl, '_blank');
     setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-    showToast('✅ 照会モードを開きました');
+    showToast(t('toast.viewer.opened'));
   } catch (err) {
-    showToast('⚠ 照会モードを開けませんでした');
+    showToast(t('toast.viewer.fail'));
     console.error(err);
   }
 });
@@ -604,15 +605,15 @@ btnPreviewViewer.addEventListener('click', async () => {
 // ── Export ────────────────────────────────────────────────────────────
 btnExport.addEventListener('click', async () => {
   const active = importedSteps.filter(s => s.enabled);
-  if (!active.length) { showToast('⚠ 出力対象のステップがありません'); return; }
-  const choice = await showSaveDialog('保存方法を選択してください', '', null);
+  if (!active.length) { showToast(t('toast.no.steps')); return; }
+  const choice = await showSaveDialog(t('save.dialog.title.save'), '', null);
   if (!choice) return;
   const filename = choice === 'overwrite' ? importedFilename : `${importedTitle}_edited`;
   await exportZip(active, filename);
 });
 
 async function exportZip(activeSteps, baseName) {
-  if (typeof JSZip === 'undefined') { showToast('⚠ JSZip の読み込みを待っています...'); return; }
+  if (typeof JSZip === 'undefined') { showToast(t('toast.jszip.wait')); return; }
   const zip = new JSZip();
   const shots = zip.folder('screenshots');
   const now = new Date().toLocaleString('ja-JP');
@@ -637,7 +638,7 @@ async function exportZip(activeSteps, baseName) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = `${baseName}.zip`; a.click();
   URL.revokeObjectURL(a.href);
-  showToast(`💾 ${baseName}.zip を保存しました（${activeSteps.length} ステップ）`);
+  showToast(t('toast.saved', { name: baseName, n: activeSteps.length }));
 }
 
 // ── HTML builders ─────────────────────────────────────────────────────
@@ -741,7 +742,7 @@ function showLightbox(src) {
     const blob = await res.blob();
     await loadZipFile(new File([blob], decodeURIComponent(filename), { type: 'application/zip' }));
   } catch (_) {
-    showToast('⚠ ZIPの読み込みに失敗しました');
+    showToast(t('toast.zip.fail'));
   }
 })();
 

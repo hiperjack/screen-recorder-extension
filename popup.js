@@ -1,5 +1,18 @@
 // popup.js
 
+// ── i18n ──────────────────────────────────────────────────────────
+applyI18n();
+const btnLang = document.getElementById('btnLang');
+btnLang.textContent = (localStorage.getItem('lang') === 'en') ? '日' : 'EN';
+btnLang.addEventListener('click', () => {
+  const newLang = localStorage.getItem('lang') === 'en' ? 'ja' : 'en';
+  localStorage.setItem('lang', newLang);
+  btnLang.textContent = newLang === 'en' ? '日' : 'EN';
+  applyI18n();
+  renderStatus();
+  renderStepsList();
+});
+
 // ── DOM ───────────────────────────────────────────────────────────
 const btnRecord    = document.getElementById('btnRecord');
 const btnClear     = document.getElementById('btnClear');
@@ -25,7 +38,7 @@ const timingMousedown      = document.getElementById('timingMousedown');
 let steps           = [];
 let stepMeta        = {};
 let isRecording     = false;
-let docTitle        = '操作手順書';
+let docTitle        = t('popup.title.default');
 let showUrl         = true;
 let screenshotTiming = 'mousedown';
 
@@ -35,7 +48,7 @@ async function init() {
   steps            = stored.steps    || [];
   stepMeta         = stored.stepMeta || {};
   isRecording      = stored.isRecording || false;
-  docTitle         = stored.docTitle || '操作手順書';
+  docTitle         = stored.docTitle || t('popup.title.default');
   showUrl          = stored.showUrl !== false;
   screenshotTiming = stored.screenshotTiming || 'mousedown';
   docTitleInput.value = docTitle;
@@ -63,7 +76,7 @@ function applyTimingUI() {
 });
 
 docTitleInput.addEventListener('input', async () => {
-  docTitle = docTitleInput.value || '操作手順書';
+  docTitle = docTitleInput.value || t('popup.title.default');
   await chrome.storage.local.set({ docTitle });
 });
 
@@ -98,19 +111,19 @@ document.getElementById('btnOpenFinalizer').addEventListener('click', () => {
 function renderStatus() {
   if (isRecording) {
     statusDot.classList.add('recording');
-    statusText.textContent = '記録中';
+    statusText.textContent = t('popup.status.recording');
     recordIcon.textContent = '⏹';
-    recordLabel.textContent = '記録を停止する';
+    recordLabel.textContent = t('popup.record.stop');
     btnRecord.classList.add('active');
   } else {
     statusDot.classList.remove('recording');
-    statusText.textContent = steps.length > 0 ? '記録停止' : '待機中';
+    statusText.textContent = steps.length > 0 ? t('popup.status.stopped') : t('popup.status.idle');
     recordIcon.textContent = '⏺';
-    recordLabel.textContent = '記録を開始する';
+    recordLabel.textContent = t('popup.record.start');
     btnRecord.classList.remove('active');
   }
   const total = steps.length;
-  stepCount.innerHTML = total > 0 ? `<span>${total}</span> ステップ記録済` : '';
+  stepCount.innerHTML = total > 0 ? t('popup.steps.recorded', { n: total }) : '';
   btnClear.disabled = total === 0;
   updateExportBtn();
 }
@@ -129,7 +142,7 @@ const ACTION_OPTS = [
 // ── Manage tab — step list ────────────────────────────────────────
 function renderStepsList() {
   if (steps.length === 0) {
-    stepsListContainer.innerHTML = `<div class="empty-state"><span class="icon">🎬</span>「記録を開始する」を押してから<br>ページを操作してください</div>`;
+    stepsListContainer.innerHTML = `<div class="empty-state"><span class="icon">🎬</span>${t('popup.empty')}</div>`;
     selectAllBar.style.display = 'none';
     return;
   }
@@ -283,7 +296,7 @@ function startElementEdit(span) {
 function updateEnabledCount() {
   const total   = steps.length;
   const enabled = steps.filter(s => stepMeta[s.step]?.enabled !== false).length;
-  enabledCount.innerHTML = `<span>${enabled}</span> / ${total} 件 出力対象`;
+  enabledCount.innerHTML = t('popup.enabled.count', { enabled, total });
   updateExportBtn();
 }
 function updateSelectAllCheckbox() {
@@ -335,12 +348,12 @@ chrome.runtime.onMessage.addListener(msg => {
 // ── Export (captured steps) ───────────────────────────────────────
 btnExport.addEventListener('click', async () => {
   const active = steps.filter(s => stepMeta[s.step]?.enabled !== false);
-  if (!active.length) { showToast('⚠ 出力対象のステップがありません'); return; }
+  if (!active.length) { showToast(t('toast.no.steps')); return; }
   await exportZip(active, `手順書_${today()}`);
 });
 
 async function exportZip(activeSteps, baseName) {
-  if (typeof JSZip === 'undefined') { showToast('⚠ JSZipの読み込みを待っています...'); return; }
+  if (typeof JSZip === 'undefined') { showToast(t('toast.jszip.wait')); return; }
   const zip = new JSZip();
   const screenshotsFolder = zip.folder('screenshots');
 
@@ -373,7 +386,7 @@ async function exportZip(activeSteps, baseName) {
   zip.file('index.html', html);
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   downloadBlobDirect(blob, `${baseName}.zip`);
-  showToast(`✅ ${baseName}.zip を保存しました（${activeSteps.length} ステップ）`);
+  showToast(t('toast.saved', { name: baseName, n: activeSteps.length }));
 }
 
 // ── HTML generators ───────────────────────────────────────────────

@@ -1,4 +1,5 @@
 // finalizer.js — multi-document navigation package creator
+applyI18n();
 
 // ── DOM ───────────────────────────────────────────────────────────────
 const dropZone      = document.getElementById('dropZone');
@@ -10,6 +11,7 @@ const btnExport     = document.getElementById('btnExport');
 const docCount      = document.getElementById('docCount');
 const navTitleInput = document.getElementById('navTitleInput');
 const toast         = document.getElementById('toast');
+navTitleInput.value = t('finalizer.nav.default');
 
 // ── Theme toggle ───────────────────────────────────────────────────────
 const btnToggleTheme = document.getElementById('btnToggleTheme');
@@ -40,32 +42,32 @@ dropZone.addEventListener('drop', e => {
 fileInput.addEventListener('change', () => { if (fileInput.files.length) { addFiles(fileInput.files); fileInput.value = ''; } });
 btnAdd.addEventListener('click', () => fileInput.click());
 btnAddSection.addEventListener('click', () => {
-  docs.push({ type: 'section', label: '新しいセクション', level: 1 });
+  docs.push({ type: 'section', label: t('finalizer.section.default'), level: 1 });
   renderDocList();
 });
 
 async function addFiles(fileList) {
   const files = [...fileList].filter(f => f.name.toLowerCase().endsWith('.zip'));
-  if (!files.length) { showToast('⚠ .zip ファイルを選択してください'); return; }
+  if (!files.length) { showToast(t('toast.finalizer.zip.only')); return; }
   for (const file of files) await addZipFile(file);
   renderDocList();
   updateExportBtn();
 }
 
 async function addZipFile(file) {
-  if (typeof JSZip === 'undefined') { showToast('⚠ JSZip の読み込みを待っています...'); return; }
+  if (typeof JSZip === 'undefined') { showToast(t('toast.finalizer.jszip.wait')); return; }
   try {
     const zip = await JSZip.loadAsync(file);
     const htmlEntry = zip.file('index.html');
-    if (!htmlEntry) { showToast(`⚠ ${file.name}: index.html が見つかりません`); return; }
+    if (!htmlEntry) { showToast(t('toast.finalizer.no.index', { name: file.name })); return; }
     const html = await htmlEntry.async('string');
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const title = doc.querySelector('h1')?.textContent?.replace(/^📋\s*/, '').trim() || file.name.replace(/\.zip$/i, '');
     const stepCount = doc.querySelectorAll('.step-card').length;
     docs.push({ type: 'doc', title, stepCount, zip, enabled: true, origName: file.name });
-    showToast(`📂 ${file.name} を追加しました（${stepCount} ステップ）`);
+    showToast(t('toast.finalizer.added', { name: file.name, n: stepCount }));
   } catch (err) {
-    showToast(`⚠ ${file.name}: 読み込みに失敗しました`);
+    showToast(t('toast.finalizer.fail', { name: file.name }));
     console.error(err);
   }
 }
@@ -73,7 +75,7 @@ async function addZipFile(file) {
 // ── Render ────────────────────────────────────────────────────────────
 function renderDocList() {
   if (docs.length === 0) {
-    docList.innerHTML = '<div class="empty-hint">手順書 ZIP をドロップするか、「＋ ZIPファイルを追加」で追加してください</div>';
+    docList.innerHTML = `<div class="empty-hint">${t('finalizer.empty.hint')}</div>`;
     return;
   }
   docList.innerHTML = '';
@@ -108,7 +110,7 @@ function renderDocList() {
         <div class="doc-num-badge">${String(docNum).padStart(2, '0')}</div>
         <div class="doc-body">
           <span class="doc-title-span" data-i="${i}">${esc(d.title)}</span>
-          <div class="doc-meta">${d.stepCount} ステップ · ${esc(d.origName)}</div>
+          <div class="doc-meta">${d.stepCount} ${t('finalizer.steps.unit')} · ${esc(d.origName)}</div>
         </div>
         <div class="doc-actions">
           <button class="view-btn" data-i="${i}" title="照会">👁</button>
@@ -215,8 +217,8 @@ btnExport.addEventListener('click', async () => {
 });
 
 async function exportMasterZip(allDocs) {
-  if (typeof JSZip === 'undefined') { showToast('⚠ JSZip の読み込みを待っています...'); return; }
-  showToast('⏳ ZIPを作成中...');
+  if (typeof JSZip === 'undefined') { showToast(t('toast.finalizer.jszip.wait')); return; }
+  showToast(t('toast.finalizer.creating'));
   try {
     const masterZip = new JSZip();
 
@@ -244,7 +246,7 @@ async function exportMasterZip(allDocs) {
     }
     await Promise.all(tasks);
 
-    const navTitle = navTitleInput.value.trim() || '操作手順書';
+    const navTitle = navTitleInput.value.trim() || t('finalizer.nav.default');
     const firstDoc = allDocs.find(d => d.type !== 'section' && d.enabled && d._prefix);
     const firstDocSrc = firstDoc ? `${firstDoc._prefix}/index.html` : '';
 
@@ -258,12 +260,12 @@ async function exportMasterZip(allDocs) {
     URL.revokeObjectURL(a.href);
 
     const activeCount = allDocs.filter(d => d.type !== 'section' && d.enabled).length;
-    showToast(`✅ ${navTitle}_navigation.zip を保存しました（${activeCount} 件）`);
+    showToast(t('toast.finalizer.created', { name: navTitle, n: activeCount }));
 
     // Clean up temp prefixes
     for (const d of allDocs) delete d._prefix;
   } catch (err) {
-    showToast('⚠ ZIP の作成に失敗しました');
+    showToast(t('toast.finalizer.create.fail'));
     console.error(err);
     for (const d of allDocs) delete d._prefix;
   }
@@ -432,3 +434,5 @@ async function viewDoc(i) {
 // ── Helpers ───────────────────────────────────────────────────────────
 function esc(str) { return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2800); }
+
+renderDocList();

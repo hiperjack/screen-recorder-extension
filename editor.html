@@ -180,34 +180,34 @@
 <!-- Toolbar -->
 <div class="toolbar">
   <div class="toolbar-logo">📋</div>
-  <span class="toolbar-title">手順書エディター</span>
+  <span class="toolbar-title" data-i18n="editor.page.title">手順書エディター</span>
   <span class="toolbar-filename" id="toolbarFilename" style="display:none"></span>
   <button class="btn-close" id="btnCloseFile" style="display:none" title="閉じる">✕</button>
   <div class="toolbar-spacer"></div>
   <span class="enabled-count" id="enabledCount" style="display:none"></span>
   <label class="chk-all-label" id="chkAllLabel" style="display:none">
-    <input type="checkbox" id="chkAll" checked> すべて選択
+    <input type="checkbox" id="chkAll" checked> <span data-i18n="editor.select.all">すべて選択</span>
   </label>
   <label class="chk-all-label" id="chkUrlLabel" style="display:none">
-    <input type="checkbox" id="chkShowUrl" checked> URL表示
+    <input type="checkbox" id="chkShowUrl" checked> <span data-i18n="editor.show.url">URL表示</span>
   </label>
   <button class="btn btn-secondary" id="btnToggleTheme" style="padding:6px 12px;font-size:11px" title="テーマ切替">🌙</button>
-  <button class="btn btn-secondary" id="btnOpenFinalizer" style="padding:6px 12px;font-size:11px">📑 最終化</button>
-  <button class="btn btn-secondary" id="btnPreviewViewer" style="display:none;padding:6px 12px;font-size:11px">👁 照会</button>
-  <button class="btn btn-export" id="btnExport" style="display:none;padding:6px 12px;font-size:11px" disabled>💾 保存 (.zip)</button>
+  <button class="btn btn-secondary" id="btnOpenFinalizer" style="padding:6px 12px;font-size:11px" data-i18n="editor.btn.finalizer">📑 最終化</button>
+  <button class="btn btn-secondary" id="btnPreviewViewer" style="display:none;padding:6px 12px;font-size:11px" data-i18n="editor.btn.preview">👁 照会</button>
+  <button class="btn btn-export" id="btnExport" style="display:none;padding:6px 12px;font-size:11px" disabled data-i18n="editor.btn.save">💾 保存 (.zip)</button>
 </div>
 
 <!-- Load area -->
 <div id="loadArea" class="load-area">
-  <h2>📂 手順書を読み込む</h2>
-  <p>この拡張機能でエクスポートした ZIP ファイルまたはフォルダを選択してください</p>
+  <h2 data-i18n="editor.load.h2">📂 手順書を読み込む</h2>
+  <p data-i18n="editor.load.desc">この拡張機能でエクスポートした ZIP ファイルまたはフォルダを選択してください</p>
   <div class="drop-zone" id="dropZone">
     <span class="dz-icon">🗂</span>
-    <p><strong>クリックまたはドラッグ＆ドロップ</strong><br>.zip ファイルに対応</p>
+    <p><strong data-i18n="editor.drop.strong">クリックまたはドラッグ＆ドロップ</strong><br><span data-i18n="editor.drop.sub">.zip ファイルに対応</span></p>
   </div>
   <input type="file" id="fileInput" accept=".zip" style="display:none">
-  <div class="or-divider">または</div>
-  <button class="btn btn-secondary" id="btnPickFolder" style="width:100%;justify-content:center;padding:12px 14px">
+  <div class="or-divider" data-i18n="editor.or">または</div>
+  <button class="btn btn-secondary" id="btnPickFolder" style="width:100%;justify-content:center;padding:12px 14px" data-i18n="editor.folder.btn">
     📁 フォルダで読み込む（index.html + screenshots/）
   </button>
   <input type="file" id="folderInput" webkitdirectory style="display:none">
@@ -228,8 +228,8 @@
     <p id="confirmMessage"></p>
     <p class="confirm-sub" id="confirmSub"></p>
     <div class="confirm-btns">
-      <button class="confirm-btn confirm-btn-cancel" id="confirmCancel">キャンセル</button>
-      <button class="confirm-btn confirm-btn-ok" id="confirmOk">閉じる</button>
+      <button class="confirm-btn confirm-btn-cancel" id="confirmCancel" data-i18n="confirm.cancel">キャンセル</button>
+      <button class="confirm-btn confirm-btn-ok" id="confirmOk" data-i18n="confirm.close">閉じる</button>
     </div>
   </div>
 </div>
@@ -239,14 +239,15 @@
     <p id="saveDialogMessage"></p>
     <p class="confirm-sub" id="saveDialogSub"></p>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-      <button class="confirm-btn confirm-btn-ok" id="saveDialogOverwrite">💾 上書き保存</button>
-      <button class="confirm-btn" id="saveDialogNew" style="background:linear-gradient(135deg,#1e3a5f,#0d2137);color:#7ec8e3;border:1px solid #1e4a6f">💾 新しく保存</button>
-      <button class="confirm-btn confirm-btn-cancel" id="saveDialogSkip" style="display:none">保存せずに続ける</button>
-      <button class="confirm-btn confirm-btn-cancel" id="saveDialogCancel" style="font-size:11px;opacity:0.7">キャンセル</button>
+      <button class="confirm-btn confirm-btn-ok" id="saveDialogOverwrite" data-i18n="save.dialog.overwrite">💾 上書き保存</button>
+      <button class="confirm-btn" id="saveDialogNew" style="background:linear-gradient(135deg,#1e3a5f,#0d2137);color:#7ec8e3;border:1px solid #1e4a6f" data-i18n="save.dialog.new">💾 新しく保存</button>
+      <button class="confirm-btn confirm-btn-cancel" id="saveDialogSkip" style="display:none" data-i18n="save.dialog.skip">保存せずに続ける</button>
+      <button class="confirm-btn confirm-btn-cancel" id="saveDialogCancel" style="font-size:11px;opacity:0.7" data-i18n="save.dialog.cancel">キャンセル</button>
     </div>
   </div>
 </div>
 
+<script src="i18n.js"></script>
 <script src="jszip.min.js"></script>
 <script src="editor.js"></script>
 </body>
