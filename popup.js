@@ -86,6 +86,10 @@ document.getElementById('btnOpenEditor').addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('editor.html') });
 });
 
+document.getElementById('btnOpenViewer').addEventListener('click', () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL('viewer.html') });
+});
+
 document.getElementById('btnOpenFinalizer').addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('finalizer.html') });
 });

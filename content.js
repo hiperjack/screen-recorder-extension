@@ -181,11 +181,13 @@
   // ── Single capture mode ───────────────────────────────────────────
   let singleCaptureBadge = null;
 
-  function onSingleCaptureMouseDown(e) {
+  async function onSingleCaptureMouseDown(e) {
     if (!singleCaptureMode || e.button !== 0) return;
     singleCaptureMode = false;
     document.removeEventListener('mousedown', onSingleCaptureMouseDown, true);
     hideSingleCaptureBadge();
+    showHighlight(e.target);
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
     try { chrome.runtime.sendMessage({ type: 'SINGLE_CAPTURE_CLICK' }); } catch (_) {}
   }
 
@@ -207,6 +209,7 @@
   }
 
   function enterSingleCaptureMode() {
+    if (singleCaptureMode) return;
     singleCaptureMode = true;
     document.addEventListener('mousedown', onSingleCaptureMouseDown, true);
     showSingleCaptureBadge();
@@ -216,6 +219,7 @@
     singleCaptureMode = false;
     document.removeEventListener('mousedown', onSingleCaptureMouseDown, true);
     hideSingleCaptureBadge();
+    hideHighlight();
   }
 
   // ── Message handler ───────────────────────────────────────────────

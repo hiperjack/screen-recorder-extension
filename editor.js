@@ -242,7 +242,7 @@ function renderSteps() {
       <div class="step-body">
         <div class="step-row1">
           <span class="action-badge" style="background:${s.actionColor}22;color:${s.actionColor};border:1px solid ${s.actionColor}33;cursor:pointer" data-idx="${s.idx}">${esc(s.actionLabel)}</span>
-          <span class="step-element editable" data-idx="${s.idx}">${esc(s.element)}</span>
+          <span class="step-element editable${s.element ? '' : ' empty'}" data-idx="${s.idx}">${s.element ? esc(s.element) : '＋ 要素名を入力...'}</span>
         </div>
         <div class="step-url">${esc(host)}</div>
         <div><span class="memo-text ${s.memo ? '' : 'empty'}" data-idx="${s.idx}">${s.memo ? esc(s.memo) : '＋ メモを追加...'}</span></div>
@@ -362,10 +362,12 @@ function startElementEdit(span) {
   if (!s) return;
   const inp = document.createElement('input');
   inp.type = 'text'; inp.className = 'element-input'; inp.value = s.element;
+  inp.placeholder = '要素名を入力...';
   span.replaceWith(inp); inp.focus(); inp.select();
   const commit = () => {
-    s.element = inp.value.trim() || s.element;
-    span.textContent = s.element;
+    s.element = inp.value.trim();
+    span.textContent = s.element || '＋ 要素名を入力...';
+    span.className = `step-element editable${s.element ? '' : ' empty'}`;
     inp.replaceWith(span);
   };
   inp.addEventListener('blur', commit);
@@ -430,20 +432,31 @@ async function pasteScreenshot(idx) {
 
 // ── Single capture ─────────────────────────────────────────────────────
 function startSingleCapture(idx) {
+  if (!chrome.runtime?.id) { showToast('⚠ 拡張機能を再読み込みしてください'); return; }
   pendingSingleCaptureIdx = idx;
-  chrome.runtime.sendMessage({ type: 'SINGLE_CAPTURE_START' });
+  try {
+    chrome.runtime.sendMessage({ type: 'SINGLE_CAPTURE_START' }).catch(() => {});
+  } catch (_) {
+    pendingSingleCaptureIdx = null;
+    showToast('⚠ 接続エラー。ページを再読み込みしてください');
+    return;
+  }
   showToast('📸 撮影したいページに切り替えてクリックしてください');
 }
 
 chrome.storage.onChanged.addListener((changes) => {
   if (!changes.singleCaptureResult?.newValue) return;
   const { screenshot } = changes.singleCaptureResult.newValue;
-  if (screenshot && pendingSingleCaptureIdx !== null) {
-    const s = importedSteps.find(x => x.idx === pendingSingleCaptureIdx);
-    if (s) { s.screenshot = screenshot; renderSteps(); showToast('📸 撮影しました'); }
+  if (pendingSingleCaptureIdx !== null) {
+    if (screenshot) {
+      const s = importedSteps.find(x => x.idx === pendingSingleCaptureIdx);
+      if (s) { s.screenshot = screenshot; renderSteps(); showToast('📸 撮影しました'); }
+    } else {
+      showToast('⚠ スクリーンショットの取得に失敗しました');
+    }
   }
   pendingSingleCaptureIdx = null;
-  chrome.storage.local.remove('singleCaptureResult');
+  chrome.storage.local.remove('singleCaptureResult').catch(() => {});
 });
 
 chkAll.addEventListener('change', () => {
@@ -567,6 +580,22 @@ function showLightbox(src) {
   _lightbox.querySelector('img').src = src;
   _lightbox.style.display = 'flex';
 }
+
+// ── Auto-load ZIP from URL param (opened from viewer.html) ────────────
+(async () => {
+  const p = new URLSearchParams(location.search);
+  const zipUrl = p.get('zipUrl');
+  const filename = p.get('filename');
+  if (!zipUrl || !filename) return;
+  showToast('⏳ 読み込み中...');
+  try {
+    const res = await fetch(zipUrl);
+    const blob = await res.blob();
+    await loadZipFile(new File([blob], decodeURIComponent(filename), { type: 'application/zip' }));
+  } catch (_) {
+    showToast('⚠ ZIPの読み込みに失敗しました');
+  }
+})();
 
 function esc(str) { return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function tryHostname(url) { try { const u = new URL(url); return u.hostname + u.pathname; } catch(_) { return url || ''; } }

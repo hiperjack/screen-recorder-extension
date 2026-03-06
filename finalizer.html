@@ -69,6 +69,25 @@
   .order-btn:disabled { opacity: 0.2; cursor: not-allowed; }
   .remove-btn { background: #2a1010; border: 1px solid #3a2020; color: #e06060; cursor: pointer; border-radius: 4px; width: 26px; height: 24px; font-size: 14px; padding: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .remove-btn:hover { background: #351515; }
+  .view-btn { background: #0d1a2a; border: 1px solid #1a2a3a; color: #5a9abf; cursor: pointer; border-radius: 4px; width: 26px; height: 24px; font-size: 13px; padding: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .view-btn:hover { background: #122030; color: #7abfdf; }
+
+  /* ── Section item ── */
+  .doc-section-item { background: #0d0d18; border: 1px dashed #2a2a4a; border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; padding: 8px 14px; }
+  .section-icon { font-size: 14px; flex-shrink: 0; }
+  .section-label-span { flex: 1; font-size: 12px; font-weight: 700; color: #7070a0; cursor: pointer; border-bottom: 1px solid transparent; transition: border-color 0.15s; }
+  .section-label-span:hover { border-bottom-color: #4a4a8a; }
+  .section-label-input { flex: 1; font-size: 12px; font-weight: 700; color: #9090c0; background: #0d0d18; border: 1px solid #3a3a6a; border-radius: 3px; padding: 2px 6px; outline: none; font-family: inherit; }
+  .btn-add-section { background: transparent; border: 1px solid #2a2a4a; color: #4a4a70; cursor: pointer; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-family: inherit; transition: all 0.15s; }
+  .btn-add-section:hover { background: #13132a; color: #7070a0; border-color: #3a3a6a; }
+  .doc-section-item[data-level="2"] { padding-left: 26px; }
+  .doc-section-item[data-level="3"] { padding-left: 40px; }
+  .level-controls { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  .level-btn { background: #1a1a2e; border: 1px solid #2a2a3e; color: #4a4a70; cursor: pointer; border-radius: 3px; width: 18px; height: 20px; font-size: 9px; padding: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .level-btn:hover:not(:disabled) { background: #252538; color: #9090b8; }
+  .level-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+  .level-badge { font-size: 9px; color: #5a5a70; font-weight: 700; min-width: 26px; text-align: center; white-space: nowrap; }
+
 
   /* ── Toast ── */
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: #1e1e30; color: #b0ffd0; padding: 8px 18px; border-radius: 20px; font-size: 12px; border: 1px solid #2a5a3a; transition: transform 0.3s; pointer-events: none; white-space: nowrap; z-index: 200; }
@@ -102,7 +121,17 @@
   body.light-mode .order-btn:hover:not(:disabled) { background: #e0e0f0; color: #5a5a8a; }
   body.light-mode .remove-btn { background: #fdf0f0; border-color: #f0d0d0; color: #c04040; }
   body.light-mode .remove-btn:hover { background: #fae0e0; }
+  body.light-mode .view-btn { background: #e8f4fb; border-color: #b0d8f0; color: #2a7aaa; }
+  body.light-mode .view-btn:hover { background: #d8ecf8; }
   body.light-mode .toast { background: #ffffff; color: #1a6a3a; border-color: #a0d8b0; }
+  body.light-mode .doc-section-item { background: #f0f0f8; border-color: #c0c0d8; }
+  body.light-mode .section-label-span { color: #5a5a8a; }
+  body.light-mode .section-label-input { color: #3a3a6a; background: #f5f5f8; border-color: #c0c0d8; }
+  body.light-mode .btn-add-section { border-color: #c0c0d8; color: #9090b0; }
+  body.light-mode .btn-add-section:hover { background: #e8e8f5; color: #5a5a8a; }
+  body.light-mode .level-btn { background: #f0f0f8; border-color: #d0d0e0; color: #9090b0; }
+  body.light-mode .level-btn:hover:not(:disabled) { background: #e0e0f0; color: #5a5a8a; }
+  body.light-mode .level-badge { color: #9090b0; }
 </style>
 </head>
 <body>
@@ -133,6 +162,7 @@
 
   <div class="section-header">
     <span>読み込んだ手順書</span>
+    <button class="btn-add-section" id="btnAddSection">＋ セクション追加</button>
   </div>
   <div id="docList">
     <div class="empty-hint">手順書 ZIP をドロップするか、「＋ ZIPファイルを追加」で追加してください</div>
