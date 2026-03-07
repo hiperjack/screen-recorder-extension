@@ -655,6 +655,7 @@ btnPreviewViewer.addEventListener('click', async () => {
       }
       return buildStepCardHTML(i + 1, t('action.' + s.actionKey), s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
     }).join('');
+    await appendBundledFonts(zip);
     zip.file('index.html', buildPageHTML(importedTitle, now, active.length, cardsHTML));
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
     const blobUrl = URL.createObjectURL(blob);
@@ -690,8 +691,29 @@ async function buildNavZip() {
   const newZip = new JSZip();
   const now = new Date().toLocaleString('ja-JP');
 
+  // Pre-fetch font data once for reuse across root + sub-documents
+  const fontBuffers = {};
+  for (const f of FONT_FILES) {
+    const resp = await fetch(chrome.runtime.getURL(`fonts/${f}`));
+    fontBuffers[f] = await resp.arrayBuffer();
+  }
+
+  // Root index.html: replace old @import with local @font-face if present
   const masterEntry = sourceNavZip.file('index.html');
-  if (masterEntry) newZip.file('index.html', await masterEntry.async('uint8array'));
+  if (masterEntry) {
+    let masterHtml = await masterEntry.async('string');
+    masterHtml = masterHtml.replace(
+      /@import\s+url\([^)]*fonts\.googleapis\.com[^)]*\)\s*;?/g,
+      "@font-face{font-family:'Noto Sans JP';font-weight:100 900;font-display:swap;src:url('fonts/NotoSansJP-Variable.woff2') format('woff2')}"
+    );
+    newZip.file('index.html', masterHtml);
+  }
+
+  // Root fonts/
+  const rootFonts = newZip.folder('fonts');
+  for (const [f, buf] of Object.entries(fontBuffers)) {
+    rootFonts.file(f, buf);
+  }
 
   for (const doc of navDocs) {
     const prefix = doc.prefix + '/';
@@ -699,10 +721,25 @@ async function buildNavZip() {
       const tasks = [];
       sourceNavZip.forEach((relPath, entry) => {
         if (!entry.dir && relPath.startsWith(prefix)) {
-          tasks.push(entry.async('uint8array').then(data => { newZip.file(relPath, data); }));
+          if (relPath === doc.prefix + '/index.html') {
+            // Replace old @import with local @font-face
+            tasks.push(entry.async('string').then(html => {
+              newZip.file(relPath, html.replace(
+                /@import\s+url\([^)]*fonts\.googleapis\.com[^)]*\)\s*;?/g,
+                "@font-face{font-family:'Noto Sans JP';font-weight:100 900;font-display:swap;src:url('fonts/NotoSansJP-Variable.woff2') format('woff2')}"
+              ));
+            }));
+          } else {
+            tasks.push(entry.async('uint8array').then(data => { newZip.file(relPath, data); }));
+          }
         }
       });
       await Promise.all(tasks);
+      // Bundle fonts for this unedited sub-document
+      const docFonts = newZip.folder(doc.prefix + '/fonts');
+      for (const [f, buf] of Object.entries(fontBuffers)) {
+        docFonts.file(f, buf);
+      }
     } else {
       const activeSteps = doc.steps.filter(s => s.enabled);
       const cardsHTML = activeSteps.map((s, i) => {
@@ -720,6 +757,11 @@ async function buildNavZip() {
         return buildStepCardHTML(i + 1, t('action.' + s.actionKey), s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
       }).join('');
       newZip.file(prefix + 'index.html', buildPageHTML(doc.title, now, activeSteps.length, cardsHTML));
+      // Bundle fonts for this sub-document
+      const docFonts = newZip.folder(doc.prefix + '/fonts');
+      for (const [f, buf] of Object.entries(fontBuffers)) {
+        docFonts.file(f, buf);
+      }
     }
   }
 
@@ -733,6 +775,16 @@ async function exportNavZip(baseName) {
   a.href = URL.createObjectURL(blob); a.download = `${baseName}.zip`; a.click();
   URL.revokeObjectURL(a.href);
   showToast(t('toast.saved', { name: baseName, n: importedSteps.filter(s => s.enabled).length }));
+}
+
+const FONT_FILES = ['NotoSansJP-Variable.woff2'];
+
+async function appendBundledFonts(zip) {
+  const folder = zip.folder('fonts');
+  for (const f of FONT_FILES) {
+    const resp = await fetch(chrome.runtime.getURL(`fonts/${f}`));
+    folder.file(f, await resp.arrayBuffer());
+  }
 }
 
 async function exportZip(activeSteps, baseName) {
@@ -756,6 +808,7 @@ async function exportZip(activeSteps, baseName) {
     return buildStepCardHTML(i + 1, t('action.' + s.actionKey), s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
   }).join('');
 
+  await appendBundledFonts(zip);
   zip.file('index.html', buildPageHTML(importedTitle, now, activeSteps.length, cardsHTML));
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   const a = document.createElement('a');
@@ -794,7 +847,7 @@ function buildPageHTML(title, now, count, cardsHTML) {
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>${esc(title)}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  @font-face{font-family:'Noto Sans JP';font-weight:100 900;font-display:swap;src:url('fonts/NotoSansJP-Variable.woff2') format('woff2')}
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Noto Sans JP',sans-serif;background:#f5f5f8;color:#1a1a2e;line-height:1.6}
   .page{max-width:900px;margin:0 auto;padding:40px 24px}

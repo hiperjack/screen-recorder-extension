@@ -241,6 +241,16 @@ btnExport.addEventListener('click', async () => {
   await exportMasterZip(docs);
 });
 
+const FONT_FILES = ['NotoSansJP-Variable.woff2'];
+
+async function appendBundledFonts(zip) {
+  const folder = zip.folder('fonts');
+  for (const f of FONT_FILES) {
+    const resp = await fetch(chrome.runtime.getURL(`fonts/${f}`));
+    folder.file(f, await resp.arrayBuffer());
+  }
+}
+
 async function exportMasterZip(allDocs) {
   if (typeof JSZip === 'undefined') { showToast(t('toast.finalizer.jszip.wait')); return; }
   showToast(t('toast.finalizer.creating'));
@@ -275,6 +285,7 @@ async function exportMasterZip(allDocs) {
     const firstDoc = allDocs.find(d => d.type !== 'section' && d.enabled && d._prefix);
     const firstDocSrc = firstDoc ? `${firstDoc._prefix}/index.html` : '';
 
+    await appendBundledFonts(masterZip);
     masterZip.file('index.html', buildNavPageHTML(navTitle, allDocs, firstDocSrc));
 
     const blob = await masterZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
@@ -376,7 +387,7 @@ function buildNavPageHTML(title, allDocs, firstDocSrc) {
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>${esc(title)}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  @font-face{font-family:'Noto Sans JP';font-weight:100 900;font-display:swap;src:url('fonts/NotoSansJP-Variable.woff2') format('woff2')}
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;font-family:'Noto Sans JP',sans-serif}
   .container{display:flex;height:100vh}
