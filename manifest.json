@@ -5,7 +5,6 @@
   "description": "画面操作をキャプチャして、スクリーンショット付きの手順書を自動生成します",
   "permissions": [
     "activeTab",
-    "clipboardRead",
     "scripting",
     "storage",
     "tabs"
