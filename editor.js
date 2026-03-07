@@ -884,6 +884,10 @@ async function loadFromRecording() {
   });
 
   showLoadedUI(importedTitle);
+
+  // Clear raw recording data from storage (now held in editor state).
+  // docTitle is kept for popup.js to use as the next recording's initial title.
+  chrome.storage.local.remove(['steps', 'stepMeta']);
 }
 
 // ── Auto-load ZIP from URL param (opened from viewer.html) ────────────

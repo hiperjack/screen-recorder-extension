@@ -12,6 +12,30 @@ const btnOpenFile  = document.getElementById('btnOpenFile');
 const btnToggleTheme = document.getElementById('btnToggleTheme');
 const toast        = document.getElementById('toast');
 
+// ── HTML sanitization ────────────────────────────────────────────────
+function sanitizeHTML(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  doc.querySelectorAll('script, object, embed, applet, iframe:not(#docFrame)').forEach(el => el.remove());
+  doc.querySelectorAll('*').forEach(el => {
+    for (const attr of [...el.attributes]) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on')) {
+        el.removeAttribute(attr.name);
+      }
+      if (['href', 'src', 'action', 'formaction'].includes(name)) {
+        const val = attr.value.trim().toLowerCase();
+        if (val.startsWith('javascript:')) {
+          el.setAttribute(attr.name, '#');
+        } else if (val.startsWith('data:') && !/^data:image\/(?!svg)/.test(val)) {
+          el.setAttribute(attr.name, '#');
+        }
+      }
+    }
+  });
+  return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+}
+
 // ── Theme ─────────────────────────────────────────────────────────────
 let theme = localStorage.getItem('theme') || 'dark';
 function applyTheme() {
@@ -87,6 +111,7 @@ async function renderZip(zip, name) {
     for (const docPath of subDocPaths.sort()) {
       const prefix = docPath.replace('/index.html', ''); // e.g. "doc_001"
       let docHtml = await zip.file(docPath).async('string');
+      docHtml = sanitizeHTML(docHtml);
 
       const imgTasks = [];
       zip.forEach((relPath, entry) => {
@@ -111,13 +136,7 @@ async function renderZip(zip, name) {
       html = html.replaceAll(docPath, blobUrl);
     }
 
-    // MV3 CSP blocks inline scripts and javascript: URIs in blob URL documents.
-    // Solution: remove all inline JS from nav HTML, then wire events from viewer.js
-    // using contentFrame.contentDocument (same-origin access — both are chrome-extension://,
-    // so no cross-origin restriction applies).
-    html = html.replace(/href="javascript:[^"]*"/g, 'href="#"');
-    html = html.replace(/ onclick="[^"]*"/g, '');
-    html = html.replace(/<script[\s\S]*?<\/script>/g, '');
+    html = sanitizeHTML(html);
 
     docTitle.textContent = new DOMParser().parseFromString(html, 'text/html').querySelector('title')?.textContent || name;
 
@@ -203,6 +222,7 @@ async function renderZip(zip, name) {
     for (const [path, url] of Object.entries(imgReplacements)) {
       html = html.replaceAll(path, url);
     }
+    html = sanitizeHTML(html);
 
     docTitle.textContent = new DOMParser().parseFromString(html, 'text/html').querySelector('h1')?.textContent?.replace(/^📋\s*/, '').trim() || name;
   }

@@ -91,13 +91,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Single capture: start → inject content script if needed, then broadcast READY
   if (message.type === 'SINGLE_CAPTURE_START') {
     chrome.storage.session.remove('singleCaptureResult');
-    chrome.tabs.query({}, tabs => {
+    chrome.tabs.query({ currentWindow: true }, tabs => {
       tabs.forEach(tab => {
         if (!tab.url || /^(chrome|chrome-extension|about|data):/.test(tab.url)) {
-          // Skip non-injectable tabs
           return;
         }
-        // Inject content script if not already running (idempotent due to guard in content.js)
         chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] })
           .catch(() => {})
           .finally(() => {
@@ -115,7 +113,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.tabs.captureVisibleTab(windowId, { format: 'png', quality: 85 }, dataUrl => {
       const screenshot = chrome.runtime.lastError ? null : (dataUrl || null);
       chrome.storage.session.set({ singleCaptureResult: { screenshot } });
-      chrome.tabs.query({}, tabs => {
+      const wId = sender.tab?.windowId;
+      chrome.tabs.query(wId != null ? { windowId: wId } : {}, tabs => {
         tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { type: 'SINGLE_CAPTURE_DONE' }).catch(() => {}));
       });
     });
@@ -124,7 +123,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Single capture: cancelled from editor
   if (message.type === 'SINGLE_CAPTURE_CANCEL') {
-    chrome.tabs.query({}, tabs => {
+    const wId = sender.tab?.windowId;
+    chrome.tabs.query(wId != null ? { windowId: wId } : {}, tabs => {
       tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { type: 'SINGLE_CAPTURE_DONE' }).catch(() => {}));
     });
     return false;

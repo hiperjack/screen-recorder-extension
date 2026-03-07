@@ -9,6 +9,28 @@
   let lang = 'ja';
   let singleCaptureMode = false;
 
+  // ── URL sanitization ──────────────────────────────────────────────
+  function sanitizeUrl(rawUrl) {
+    try {
+      const url = new URL(rawUrl);
+      const sensitive = [
+        'token','access_token','auth_token','api_key','apikey',
+        'key','secret','password','passwd','pwd',
+        'session','session_id','sessionid','sid',
+        'auth','authorization','credential','client_secret'
+      ];
+      for (const p of [...url.searchParams.keys()]) {
+        if (sensitive.some(s => p.toLowerCase().includes(s))) {
+          url.searchParams.set(p, '[REDACTED]');
+        }
+      }
+      url.hash = '';
+      return url.toString();
+    } catch (_) {
+      return rawUrl;
+    }
+  }
+
   // ── Overlay highlight ────────────────────────────────────────────
   function createOverlay() {
     if (highlightOverlay) return;
@@ -119,7 +141,7 @@
     const step = {
       step: stepCounter,
       timestamp: new Date().toISOString(),
-      url: location.href,
+      url: sanitizeUrl(location.href),
       title: document.title,
       action,
       element: describeElement(el),
