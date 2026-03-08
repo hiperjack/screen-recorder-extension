@@ -63,6 +63,12 @@ async function addZipFile(file) {
   if (typeof JSZip === 'undefined') { showToast(t('toast.finalizer.jszip.wait')); return; }
   try {
     const zip = await JSZip.loadAsync(file);
+    // Reject nav ZIPs (already finalized)
+    let isNavZip = false;
+    zip.forEach((relPath, entry) => {
+      if (!entry.dir && /^doc_\d+\/index\.html$/.test(relPath)) isNavZip = true;
+    });
+    if (isNavZip) { showToast(t('toast.finalizer.nav.zip', { name: file.name })); return; }
     const htmlEntry = zip.file('index.html');
     if (!htmlEntry) { showToast(t('toast.finalizer.no.index', { name: file.name })); return; }
     const html = await htmlEntry.async('string');
