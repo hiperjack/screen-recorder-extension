@@ -12,6 +12,7 @@ const stepsList       = document.getElementById('stepsList');
 const toolbarFilename = document.getElementById('toolbarFilename');
 const btnCloseFile    = document.getElementById('btnCloseFile');
 const docTitleText    = document.getElementById('docTitleText');
+const docSummaryText  = document.getElementById('docSummaryText');
 const enabledCount    = document.getElementById('enabledCount');
 const chkAllLabel     = document.getElementById('chkAllLabel');
 const chkAll          = document.getElementById('chkAll');
@@ -37,6 +38,7 @@ function actionToKey(label) { return ACTION_LABEL_TO_KEY[label] || 'click'; }
 // ── State ─────────────────────────────────────────────────────────────
 let importedSteps = [];
 let importedTitle = '操作手順書';
+let importedSummary = '';
 let importedFilename = '';
 let sourceNavZip = null;       // original JSZip when a nav ZIP is loaded
 let sourceNavDocPrefix = '';   // e.g. 'doc_001'
@@ -167,6 +169,7 @@ async function activateNavDoc(idx) {
   if (activeNavDocIdx >= 0) {
     navDocs[activeNavDocIdx].steps = importedSteps.map(s => ({...s}));
     navDocs[activeNavDocIdx].title = importedTitle;
+    navDocs[activeNavDocIdx].summary = importedSummary;
   }
   activeNavDocIdx = idx;
   const doc = navDocs[idx];
@@ -174,6 +177,7 @@ async function activateNavDoc(idx) {
   if (doc.steps !== null) {
     importedSteps = doc.steps.map(s => ({...s}));
     importedTitle = doc.title;
+    importedSummary = doc.summary || '';
   } else {
     const prefix = doc.prefix;
     parseImportedHTML(await sourceNavZip.file(doc.path).async('string'));
@@ -193,10 +197,12 @@ async function activateNavDoc(idx) {
     });
     doc.steps = importedSteps.map(s => ({...s}));
     doc.title = importedTitle;
+    doc.summary = importedSummary;
   }
 
   renderNavSidebar();
   docTitleText.textContent = importedTitle;
+  renderSummary();
   renderSteps();
 }
 
@@ -225,6 +231,7 @@ function showLoadedUI(name, isNav = false) {
   document.getElementById('navSidebar').style.display = isNav ? 'flex' : 'none';
   if (!isNav) {
     docTitleText.textContent = importedTitle;
+    renderSummary();
     showToast(t('toast.loaded', { name, n: importedSteps.length }));
     renderSteps();
   }
@@ -247,6 +254,27 @@ docTitleText.addEventListener('click', () => {
   inp.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); commit(); }
     if (e.key === 'Escape') { inp.value = importedTitle; commit(); }
+  });
+});
+
+function renderSummary() {
+  docSummaryText.textContent = importedSummary || t('editor.summary.placeholder');
+  docSummaryText.classList.toggle('empty', !importedSummary);
+}
+
+docSummaryText.addEventListener('click', () => {
+  const ta = document.createElement('textarea');
+  ta.className = 'doc-summary-input'; ta.value = importedSummary; ta.rows = 3;
+  docSummaryText.replaceWith(ta); ta.focus();
+  function commit() {
+    importedSummary = ta.value.trim();
+    if (activeNavDocIdx >= 0) navDocs[activeNavDocIdx].summary = importedSummary;
+    renderSummary();
+    ta.replaceWith(docSummaryText);
+  }
+  ta.addEventListener('blur', commit);
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { ta.value = importedSummary; commit(); }
   });
 });
 
@@ -299,6 +327,7 @@ btnCloseFile.addEventListener('click', async () => {
 function parseImportedHTML(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   importedTitle = doc.querySelector('h1')?.textContent?.replace(/^📋\s*/, '').trim() || '操作手順書';
+  importedSummary = doc.querySelector('.doc-summary')?.textContent?.trim() || '';
   importedSteps = [];
   doc.querySelectorAll('.step-card').forEach((card, i) => {
     const badge    = card.querySelector('.action-badge');
@@ -656,7 +685,7 @@ btnPreviewViewer.addEventListener('click', async () => {
       return buildStepCardHTML(i + 1, t('action.' + s.actionKey), s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
     }).join('');
     await appendBundledFonts(zip);
-    zip.file('index.html', buildPageHTML(importedTitle, now, active.length, cardsHTML));
+    zip.file('index.html', buildPageHTML(importedTitle, now, active.length, cardsHTML, importedSummary));
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
     const blobUrl = URL.createObjectURL(blob);
     const viewerBase = chrome.runtime?.getURL ? chrome.runtime.getURL('viewer.html') : 'viewer.html';
@@ -686,6 +715,7 @@ async function buildNavZip() {
   if (activeNavDocIdx >= 0) {
     navDocs[activeNavDocIdx].steps = importedSteps.map(s => ({...s}));
     navDocs[activeNavDocIdx].title = importedTitle;
+    navDocs[activeNavDocIdx].summary = importedSummary;
   }
 
   const newZip = new JSZip();
@@ -756,7 +786,7 @@ async function buildNavZip() {
         }
         return buildStepCardHTML(i + 1, t('action.' + s.actionKey), s.actionColor, s.element, s.url, s.value, s.memo, screenshotSrc, showUrl);
       }).join('');
-      newZip.file(prefix + 'index.html', buildPageHTML(doc.title, now, activeSteps.length, cardsHTML));
+      newZip.file(prefix + 'index.html', buildPageHTML(doc.title, now, activeSteps.length, cardsHTML, doc.summary || ''));
       // Bundle fonts for this sub-document
       const docFonts = newZip.folder(doc.prefix + '/fonts');
       for (const [f, buf] of Object.entries(fontBuffers)) {
@@ -809,7 +839,7 @@ async function exportZip(activeSteps, baseName) {
   }).join('');
 
   await appendBundledFonts(zip);
-  zip.file('index.html', buildPageHTML(importedTitle, now, activeSteps.length, cardsHTML));
+  zip.file('index.html', buildPageHTML(importedTitle, now, activeSteps.length, cardsHTML, importedSummary));
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = `${baseName}.zip`; a.click();
@@ -839,7 +869,7 @@ function buildStepCardHTML(num, aLabel, aColor, element, url, value, memo, scree
   </div>`;
 }
 
-function buildPageHTML(title, now, count, cardsHTML) {
+function buildPageHTML(title, now, count, cardsHTML, summary) {
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -852,6 +882,7 @@ function buildPageHTML(title, now, count, cardsHTML) {
   body{font-family:'Noto Sans JP',sans-serif;background:#f5f5f8;color:#1a1a2e;line-height:1.6}
   .page{max-width:900px;margin:0 auto;padding:40px 24px}
   h1{font-size:24px;font-weight:700;margin-bottom:6px}
+  .doc-summary{font-size:13px;color:#555;margin-bottom:12px;white-space:pre-wrap;line-height:1.6}
   .meta{color:#666;font-size:13px;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #e0e0ea}
   .meta span{margin-right:20px}
   .step-card{background:#fff;border-radius:12px;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1px solid #ebebf0}
@@ -874,6 +905,7 @@ function buildPageHTML(title, now, count, cardsHTML) {
 <body>
 <div class="page">
   <h1>📋 ${esc(title)}</h1>
+  ${summary ? `<div class="doc-summary">${esc(summary)}</div>` : ''}
   <div class="meta"><span>📅 作成日時: ${now}</span><span>📌 総ステップ数: ${count}</span></div>
   ${cardsHTML}
 </div>
@@ -914,6 +946,7 @@ async function loadFromRecording() {
   if (rawSteps.length === 0) return;
 
   importedTitle    = stored.docTitle || t('popup.title.default');
+  importedSummary  = '';
   importedFilename = '';
   sourceNavZip     = null;
   sourceNavDocPrefix = '';
