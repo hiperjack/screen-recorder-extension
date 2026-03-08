@@ -80,6 +80,7 @@ async function startRecording() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.id) { try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }); } catch(_){} }
   renderStatus();
+  window.close();
 }
 
 async function stopRecording() {

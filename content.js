@@ -66,17 +66,82 @@
     if (highlightOverlay) highlightOverlay.style.display = 'none';
   }
 
+  // ── Human-readable label extraction ─────────────────────────────
+  function getHumanLabel(el) {
+    // 1. aria-label
+    const ariaLabel = el.getAttribute('aria-label');
+    if (ariaLabel) return ariaLabel.trim();
+
+    // 2. aria-labelledby → resolve to referenced element's text
+    const labelledBy = el.getAttribute('aria-labelledby');
+    if (labelledBy) {
+      const text = labelledBy.split(/\s+/)
+        .map(id => document.getElementById(id)?.textContent?.trim())
+        .filter(Boolean)
+        .join(' ');
+      if (text) return text;
+    }
+
+    // 3. Associated <label> via for= attribute
+    if (el.id) {
+      try {
+        const forLabel = document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
+        if (forLabel) {
+          const t = forLabel.textContent?.trim();
+          if (t) return t;
+        }
+      } catch (_) { /* ignore selector errors */ }
+    }
+
+    // 4. Wrapping <label> ancestor
+    const parentLabel = el.closest('label');
+    if (parentLabel) {
+      const clone = parentLabel.cloneNode(true);
+      clone.querySelectorAll('input, select, textarea, button').forEach(c => c.remove());
+      const t = clone.textContent?.trim();
+      if (t) return t;
+    }
+
+    // 5. title attribute
+    const title = el.getAttribute('title');
+    if (title) return title.trim();
+
+    // 6. placeholder
+    const placeholder = el.getAttribute('placeholder');
+    if (placeholder) return placeholder.trim();
+
+    // 7. innerText (for buttons, links, select options list, etc.)
+    const innerText = el.innerText?.trim();
+    if (innerText) return innerText.slice(0, 60);
+
+    // 8. Nearby sibling text in common form patterns
+    const parent = el.parentElement;
+    if (parent) {
+      for (const sibling of parent.children) {
+        if (sibling === el) continue;
+        const sTag = sibling.tagName.toLowerCase();
+        if (['label', 'span', 'div', 'th', 'dt', 'p'].includes(sTag)) {
+          const t = sibling.textContent?.trim();
+          if (t && t.length <= 80) return t;
+        }
+      }
+    }
+
+    // 9. name attribute (fallback)
+    const name = el.getAttribute('name');
+    if (name) return name;
+
+    // 10. id attribute (last resort)
+    const id = el.getAttribute('id');
+    if (id) return id;
+
+    return '';
+  }
+
   // ── Element description ──────────────────────────────────────────
   function describeElement(el) {
     const tag = el.tagName.toLowerCase();
-    const label =
-      el.getAttribute('aria-label') ||
-      el.getAttribute('title') ||
-      el.getAttribute('placeholder') ||
-      el.getAttribute('name') ||
-      el.getAttribute('id') ||
-      el.innerText?.trim().slice(0, 60) ||
-      '';
+    const label = getHumanLabel(el);
 
     const typeAttr = el.getAttribute('type') || '';
     const role = el.getAttribute('role') || '';
@@ -138,13 +203,24 @@
     // Wait for the highlight to be painted before capturing
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
+    // For input/select actions, use the value as element description;
+    // for click actions, use the full human-readable element description.
+    let elementDesc;
+    if (action === 'input') {
+      elementDesc = el.value?.trim().slice(0, 60) || describeElement(el);
+    } else if (action === 'select') {
+      elementDesc = el.options[el.selectedIndex]?.text?.trim() || describeElement(el);
+    } else {
+      elementDesc = describeElement(el);
+    }
+
     const step = {
       step: stepCounter,
       timestamp: new Date().toISOString(),
       url: sanitizeUrl(location.href),
       title: document.title,
       action,
-      element: describeElement(el),
+      element: elementDesc,
       xpath: getXPath(el),
       ...extra
     };
