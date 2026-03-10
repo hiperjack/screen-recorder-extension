@@ -309,6 +309,21 @@ function showSaveDialog(message, skipLabel) {
   });
 }
 
+// showFormatDialog: resolves to 'zip' | 'pptx' | null(cancel)
+function showFormatDialog(message, sub) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('formatDialogOverlay');
+    document.getElementById('formatDialogMessage').textContent = message;
+    document.getElementById('formatDialogSub').textContent = sub || '';
+    overlay.style.display = 'flex';
+    const cleanup = result => { overlay.style.display = 'none'; resolve(result); };
+    document.getElementById('formatDialogZip').onclick    = () => cleanup('zip');
+    document.getElementById('formatDialogPptx').onclick   = () => cleanup('pptx');
+    document.getElementById('formatDialogCancel').onclick  = () => cleanup(null);
+    overlay.onclick = e => { if (e.target === overlay) cleanup(null); };
+  });
+}
+
 btnCloseFile.addEventListener('click', async () => {
   const ok = await showConfirm(t('confirm.close.file.title'), t('confirm.close.file.sub'));
   if (!ok) return;
@@ -703,10 +718,21 @@ btnPreviewViewer.addEventListener('click', async () => {
 btnExport.addEventListener('click', async () => {
   const active = importedSteps.filter(s => s.enabled);
   if (!active.length) { showToast(t('toast.no.steps')); return; }
-  if (sourceNavZip) {
-    await exportNavZip(importedFilename || `${importedTitle}_${formatDatetime()}`);
-  } else {
-    await exportZip(active, importedFilename || `${importedTitle}_${formatDatetime()}`);
+
+  const sub = sourceNavZip ? t('format.dialog.pptx.nav.note') : '';
+  const format = await showFormatDialog(t('format.dialog.title'), sub);
+  if (!format) return;
+
+  const baseName = importedFilename || `${importedTitle}_${formatDatetime()}`;
+
+  if (format === 'zip') {
+    if (sourceNavZip) {
+      await exportNavZip(baseName);
+    } else {
+      await exportZip(active, baseName);
+    }
+  } else if (format === 'pptx') {
+    await exportPptx(active, baseName);
   }
 });
 
@@ -845,6 +871,133 @@ async function exportZip(activeSteps, baseName) {
   a.href = URL.createObjectURL(blob); a.download = `${baseName}.zip`; a.click();
   URL.revokeObjectURL(a.href);
   showToast(t('toast.saved', { name: baseName, n: activeSteps.length }));
+}
+
+// ── PPTX export ──────────────────────────────────────────────────────
+function getImageSize(dataUrl) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => resolve({ w: 1280, h: 720 });
+    img.src = dataUrl;
+  });
+}
+
+async function exportPptx(activeSteps, baseName) {
+  if (typeof PptxGenJS === 'undefined') { showToast(t('toast.pptxgen.wait')); return; }
+
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_16x9';
+  pptx.author = t('app.name');
+  pptx.subject = importedTitle;
+
+  const ACCENT = 'e94560';
+  const BG_DARK = '1a1a2e';
+  const TEXT_LIGHT = 'f0f0ff';
+  const TEXT_MID = '9090b8';
+  const FONT = 'Meiryo';
+
+  // ── Title Slide ──
+  const titleSlide = pptx.addSlide();
+  titleSlide.background = { color: BG_DARK };
+  titleSlide.addText(importedTitle, {
+    x: 0.8, y: 1.2, w: 8.4, h: 1.0,
+    fontSize: 28, fontFace: FONT, color: TEXT_LIGHT, bold: true
+  });
+  if (importedSummary) {
+    titleSlide.addText(importedSummary, {
+      x: 0.8, y: 2.3, w: 8.4, h: 1.0,
+      fontSize: 12, fontFace: FONT, color: TEXT_MID, valign: 'top'
+    });
+  }
+  const now = new Date().toLocaleString('ja-JP');
+  titleSlide.addText(`${now}    ${activeSteps.length} ステップ`, {
+    x: 0.8, y: 4.2, w: 8.4, h: 0.4,
+    fontSize: 11, fontFace: FONT, color: TEXT_MID
+  });
+  titleSlide.addShape(pptx.ShapeType.rect, {
+    x: 0.8, y: 3.5, w: 2.0, h: 0.05, fill: { color: ACCENT }
+  });
+
+  // ── Step Slides ──
+  for (let i = 0; i < activeSteps.length; i++) {
+    const s = activeSteps[i];
+    const slide = pptx.addSlide();
+    slide.background = { color: 'f5f5f8' };
+
+    const stepNum = i + 1;
+    const actionLabel = t('action.' + s.actionKey);
+    const actionColor = s.actionColor.replace('#', '');
+
+    // Step number badge
+    slide.addShape(pptx.ShapeType.roundRect, {
+      x: 0.3, y: 0.2, w: 0.45, h: 0.45,
+      fill: { color: ACCENT }, rectRadius: 0.08
+    });
+    slide.addText(String(stepNum), {
+      x: 0.3, y: 0.2, w: 0.45, h: 0.45,
+      fontSize: 16, fontFace: FONT, color: 'ffffff', bold: true,
+      align: 'center', valign: 'middle'
+    });
+
+    // Action badge
+    slide.addShape(pptx.ShapeType.roundRect, {
+      x: 0.85, y: 0.25, w: 0.8, h: 0.35,
+      fill: { color: actionColor, transparency: 85 },
+      line: { color: actionColor, width: 0.5 },
+      rectRadius: 0.05
+    });
+    slide.addText(actionLabel, {
+      x: 0.85, y: 0.25, w: 0.8, h: 0.35,
+      fontSize: 10, fontFace: FONT, color: actionColor, bold: true,
+      align: 'center', valign: 'middle'
+    });
+
+    // Element description
+    slide.addText(s.element || '', {
+      x: 1.75, y: 0.2, w: 7.8, h: 0.4,
+      fontSize: 14, fontFace: FONT, color: '1a1a2e', bold: true, valign: 'middle'
+    });
+
+    // Detail line
+    const details = [];
+    if (showUrl && s.url) details.push(tryHostname(s.url));
+    if (s.value) details.push(s.value);
+    if (s.memo) details.push(s.memo);
+    if (details.length > 0) {
+      slide.addText(details.join('    '), {
+        x: 0.85, y: 0.65, w: 8.7, h: 0.3,
+        fontSize: 9, fontFace: FONT, color: '666666'
+      });
+    }
+
+    // Screenshot
+    if (s.screenshot && s.screenshot.startsWith('data:')) {
+      const maxW = 9.4, maxH = 4.2;
+      const { w: natW, h: natH } = await getImageSize(s.screenshot);
+      const ratio = Math.min(maxW / natW, maxH / natH);
+      const drawW = natW * ratio;
+      const drawH = natH * ratio;
+      const drawX = 0.3 + (maxW - drawW) / 2;
+      const drawY = 1.05 + (maxH - drawH) / 2;
+      slide.addImage({ data: s.screenshot, x: drawX, y: drawY, w: drawW, h: drawH });
+    }
+
+    // Slide number
+    slide.addText(`${stepNum} / ${activeSteps.length}`, {
+      x: 8.5, y: 5.2, w: 1.2, h: 0.3,
+      fontSize: 8, fontFace: FONT, color: '999999', align: 'right'
+    });
+  }
+
+  // ── Generate and download ──
+  const pptxBlob = await pptx.write({ outputType: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(pptxBlob);
+  a.download = `${baseName}.pptx`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast(t('toast.pptx.saved', { name: baseName, n: activeSteps.length }));
 }
 
 // ── HTML builders ─────────────────────────────────────────────────────

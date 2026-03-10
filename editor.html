@@ -224,7 +224,7 @@
   <button class="btn btn-secondary" id="btnToggleTheme" style="padding:6px 12px;font-size:11px" title="テーマ切替">🌙</button>
   <button class="btn btn-secondary" id="btnOpenFinalizer" style="padding:6px 12px;font-size:11px" data-i18n="editor.btn.finalizer">📑 最終化</button>
   <button class="btn btn-secondary" id="btnPreviewViewer" style="display:none;padding:6px 12px;font-size:11px" data-i18n="editor.btn.preview">👁 照会</button>
-  <button class="btn btn-export" id="btnExport" style="display:none;padding:6px 12px;font-size:11px" disabled data-i18n="editor.btn.save">💾 保存 (.zip)</button>
+  <button class="btn btn-export" id="btnExport" style="display:none;padding:6px 12px;font-size:11px" disabled data-i18n="editor.btn.save">💾 保存</button>
 </div>
 
 <!-- Editor body -->
@@ -288,8 +288,21 @@
   </div>
 </div>
 
+<div class="confirm-overlay" id="formatDialogOverlay" style="display:none">
+  <div class="confirm-box" style="max-width:320px">
+    <p id="formatDialogMessage"></p>
+    <p class="confirm-sub" id="formatDialogSub"></p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+      <button class="confirm-btn confirm-btn-ok" id="formatDialogZip" data-i18n="format.dialog.zip">📄 HTML (.zip)</button>
+      <button class="confirm-btn confirm-btn-ok" id="formatDialogPptx" style="background:linear-gradient(135deg,#1e3a5f,#0d2137);color:#7ec8e3" data-i18n="format.dialog.pptx">📊 PowerPoint (.pptx)</button>
+      <button class="confirm-btn confirm-btn-cancel" id="formatDialogCancel" style="font-size:11px;opacity:0.7" data-i18n="save.dialog.cancel">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <script src="i18n.js"></script>
 <script src="jszip.min.js"></script>
+<script src="pptxgen.bundle.min.js"></script>
 <script src="editor.js"></script>
 </body>
 </html>
