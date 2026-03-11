@@ -339,53 +339,12 @@
         stepCounter = 0;
         createOverlay();
         attachListeners();
-        showRecordingBadge();
       } else {
         hideHighlight();
-        hideRecordingBadge();
       }
     }
   });
 
-  // ── Recording badge ───────────────────────────────────────────────
-  let badge = null;
-  function showRecordingBadge() {
-    if (badge) return;
-    badge = document.createElement('div');
-    badge.id = '__proc_badge';
-    badge.innerHTML = `
-      <span style="display:inline-block;width:10px;height:10px;background:#FF4444;
-        border-radius:50%;margin-right:6px;animation:__proc_pulse 1s infinite;"></span>
-      記録中
-    `;
-    Object.assign(badge.style, {
-      position: 'fixed',
-      bottom: '20px',
-      right: '20px',
-      zIndex: '2147483647',
-      background: 'rgba(0,0,0,0.8)',
-      color: '#fff',
-      padding: '8px 14px',
-      borderRadius: '20px',
-      fontSize: '13px',
-      fontFamily: 'sans-serif',
-      display: 'flex',
-      alignItems: 'center',
-      pointerEvents: 'none',
-      backdropFilter: 'blur(8px)'
-    });
-    const style = document.createElement('style');
-    style.textContent = `@keyframes __proc_pulse {
-      0%,100%{opacity:1;transform:scale(1)}
-      50%{opacity:0.4;transform:scale(0.8)}
-    }`;
-    document.head.appendChild(style);
-    document.body.appendChild(badge);
-  }
-
-  function hideRecordingBadge() {
-    if (badge) { badge.remove(); badge = null; }
-  }
 
   // Sync initial state
   chrome.runtime.sendMessage({ type: 'GET_RECORDING_STATE' }, res => {

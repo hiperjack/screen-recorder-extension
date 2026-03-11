@@ -898,27 +898,26 @@ async function exportPptx(activeSteps, baseName) {
   const TEXT_DARK = '1a1a2e';
   const TEXT_MID = '666666';
   const FONT = 'Meiryo';
+  const MARGIN = [2.8, 2.8, 2.8, 2.8]; // 0.1cm = 2.835pt (top, right, bottom, left)
 
   // ── Title Slide ──
   const titleSlide = pptx.addSlide();
   titleSlide.addText(importedTitle, {
     x: 0.5, y: 0.7, w: 8.4, h: 1.0,
-    fontSize: 28, fontFace: FONT, color: TEXT_DARK, bold: true, valign: 'middle'
+    fontSize: 28, fontFace: FONT, color: TEXT_DARK, bold: true, valign: 'middle', margin: MARGIN
   });
   if (importedSummary) {
     titleSlide.addText(importedSummary, {
       x: 0.5, y: 1.8, w: 5.6, h: 1.0,
-      fontSize: 12, fontFace: FONT, color: TEXT_MID, valign: 'top'
+      fontSize: 12, fontFace: FONT, color: TEXT_MID, valign: 'top', margin: MARGIN
     });
   }
   const now = new Date().toLocaleString('ja-JP');
   titleSlide.addText(`${now}    ${activeSteps.length} ステップ`, {
-    x: 0.5, y: 3.8, w: 8.4, h: 0.4,
-    fontSize: 11, fontFace: FONT, color: TEXT_MID
+    x: 0.5, y: 1.57, w: 8.4, h: 0.4,
+    fontSize: 11, fontFace: FONT, color: TEXT_MID, margin: MARGIN
   });
-  titleSlide.addShape(pptx.ShapeType.rect, {
-    x: 0.5, y: 3.2, w: 2.0, h: 0.05, fill: { color: ACCENT }
-  });
+  // (decorative bar removed)
 
   // ── Step Slides ──
   for (let i = 0; i < activeSteps.length; i++) {
@@ -929,41 +928,37 @@ async function exportPptx(activeSteps, baseName) {
     const actionLabel = t('action.' + s.actionKey);
     const actionColor = s.actionColor.replace('#', '');
 
-    // Step number badge  (x:0.13cm, y:0.13cm)
-    slide.addShape(pptx.ShapeType.roundRect, {
-      x: 0.05, y: 0.05, w: 0.45, h: 0.45,
+    // Step number badge  (x:0.13cm, y:0.13cm, h=Action badge)
+    slide.addText(String(stepNum), {
+      x: 0.05, y: 0.10, w: 0.35, h: 0.35,
+      fontSize: 14, fontFace: FONT, color: 'ffffff', bold: true,
+      align: 'center', valign: 'middle', margin: MARGIN,
+      shape: pptx.ShapeType.roundRect,
       fill: { color: ACCENT }, rectRadius: 0.08
     });
-    slide.addText(String(stepNum), {
-      x: 0.05, y: 0.05, w: 0.45, h: 0.45,
-      fontSize: 16, fontFace: FONT, color: 'ffffff', bold: true,
-      align: 'center', valign: 'middle'
-    });
 
-    // Action badge  (x:1.4cm, y:0.25cm)
-    slide.addShape(pptx.ShapeType.roundRect, {
-      x: 0.55, y: 0.10, w: 0.8, h: 0.35,
+    // Action badge  (x:1.1cm, y:0.25cm)
+    slide.addText(actionLabel, {
+      x: 0.43, y: 0.10, w: 0.8, h: 0.35,
+      fontSize: 10, fontFace: FONT, color: actionColor, bold: true,
+      align: 'center', valign: 'middle', margin: MARGIN,
+      shape: pptx.ShapeType.roundRect,
       fill: { color: actionColor, transparency: 85 },
       line: { color: actionColor, width: 0.5 },
       rectRadius: 0.05
     });
-    slide.addText(actionLabel, {
-      x: 0.55, y: 0.10, w: 0.8, h: 0.35,
-      fontSize: 10, fontFace: FONT, color: actionColor, bold: true,
-      align: 'center', valign: 'middle'
-    });
 
-    // Element description  (x:3.5cm, y:0.19cm, w:15cm)
+    // Element description  (x:3.2cm, y:0.19cm, w:15cm)
     slide.addText(s.element || '', {
-      x: 1.38, y: 0.07, w: 5.91, h: 0.4,
-      fontSize: 14, fontFace: FONT, color: '1a1a2e', bold: true, valign: 'middle'
+      x: 1.26, y: 0.07, w: 6.03, h: 0.4,
+      fontSize: 14, fontFace: FONT, color: '1a1a2e', bold: true, valign: 'middle', margin: MARGIN
     });
 
     // URL  (x:1.3cm, y:1.4cm)
     if (showUrl && s.url) {
       slide.addText(tryHostname(s.url), {
         x: 0.51, y: 0.55, w: 8.7, h: 0.3,
-        fontSize: 9, fontFace: FONT, color: '666666', valign: 'top'
+        fontSize: 9, fontFace: FONT, color: '666666', valign: 'top', margin: MARGIN
       });
     }
 
@@ -974,7 +969,7 @@ async function exportPptx(activeSteps, baseName) {
     if (details.length > 0) {
       slide.addText(details.join('    '), {
         x: 0.51, y: 0.83, w: 8.7, h: 0.3,
-        fontSize: 9, fontFace: FONT, color: '666666', valign: 'top'
+        fontSize: 9, fontFace: FONT, color: '666666', valign: 'top', margin: MARGIN
       });
     }
 
