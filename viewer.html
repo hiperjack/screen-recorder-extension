@@ -11,7 +11,7 @@
 
   /* ── Toolbar ── */
   .toolbar { position: relative; z-index: 10; background: #1a1a2e; border-bottom: 1px solid #2a2a3e; padding: 10px 24px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-  .toolbar-logo { width: 28px; height: 28px; background: linear-gradient(135deg, #4a9eff, #2a6abf); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .toolbar-logo { width: 28px; height: 28px; background: linear-gradient(135deg, #203864, #162d50); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
   .toolbar-title { font-size: 13px; font-weight: 700; color: #f0f0ff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 400px; }
   .toolbar-spacer { flex: 1; }
   .btn { padding: 7px 14px; border: none; border-radius: 6px; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -59,7 +59,7 @@
 <body>
 
 <div class="toolbar">
-  <div class="toolbar-logo">👁</div>
+  <div class="toolbar-logo"><span style="filter:grayscale(1) brightness(10)">👁</span></div>
   <span class="toolbar-title" id="docTitle" data-i18n="viewer.toolbar.default">照会モード</span>
   <div class="toolbar-spacer"></div>
   <button class="btn btn-secondary" id="btnToggleTheme" style="padding:6px 12px;font-size:11px" title="テーマ切替">🌙</button>
