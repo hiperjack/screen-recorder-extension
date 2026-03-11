@@ -400,7 +400,7 @@ function buildNavPageHTML(title, allDocs, firstDocSrc) {
   .sidebar{width:280px;min-width:200px;background:#1a1a2e;color:#e8e8f0;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid #2a2a3e;flex-shrink:0;transition:width 0.2s,min-width 0.2s}
   .sidebar.collapsed{width:42px;min-width:42px}
   .sidebar-header{padding:12px 10px;border-bottom:1px solid #2a2a3e;display:flex;align-items:center;gap:8px;min-height:50px;overflow:hidden}
-  .sidebar-logo{width:24px;height:24px;background:linear-gradient(135deg,#e94560,#c62a47);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+  .sidebar-logo{width:24px;height:24px;background:linear-gradient(135deg,#203864,#162d50);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
   .sidebar-title{font-size:13px;font-weight:700;color:#f0f0ff;line-height:1.3;flex:1;overflow:hidden;white-space:nowrap}
   .sidebar-toggle{background:transparent;border:1px solid #2a2a3e;color:#5a5a80;cursor:pointer;border-radius:4px;width:26px;height:26px;font-size:11px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:color 0.15s}
   .sidebar-toggle:hover{color:#a0a0d0;border-color:#3a3a5a}
@@ -413,8 +413,8 @@ function buildNavPageHTML(title, allDocs, firstDocSrc) {
   .sidebar-list::-webkit-scrollbar-thumb{background:#2a2a3e;border-radius:2px}
   .doc-link{display:block;padding:10px 14px;color:#8080b0;font-size:12px;text-decoration:none;cursor:pointer;border-left:3px solid transparent;transition:all 0.15s;border-bottom:1px solid #151525;line-height:1.4}
   .doc-link:hover{background:#1e1e30;color:#c0c0e0}
-  .doc-link.active{background:#1e1e30;color:#f0f0ff;border-left-color:#e94560}
-  .doc-num{font-size:10px;color:#e94560;font-weight:700;margin-right:6px}
+  .doc-link.active{background:#1e1e30;color:#f0f0ff;border-left-color:#203864}
+  .doc-num{font-size:10px;color:#203864;font-weight:700;margin-right:6px}
   .section-group{border-bottom:1px solid #151525}
   .section-hdr{padding:8px 14px;font-size:11px;font-weight:700;color:#5a5a80;cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none;transition:color 0.15s}
   .section-hdr:hover{color:#9090b0;background:#141424}

@@ -24,8 +24,8 @@ const toast           = document.getElementById('toast');
 
 // ── Action options ────────────────────────────────────────────────────
 const ACTION_OPTS = [
-  { key: 'click',  color: '#e94560' },
-  { key: 'input',  color: '#4a9eff' },
+  { key: 'click',  color: '#4a9eff' },
+  { key: 'input',  color: '#e94560' },
   { key: 'select', color: '#50c878' },
 ];
 const ACTION_LABEL_TO_KEY = {
@@ -493,7 +493,7 @@ function addNewStep() {
   importedSteps.push({
     idx: newIdx,
     actionKey:   'click',
-    actionColor: '#e94560',
+    actionColor: '#203864',
     element: '',
     url: '', value: '', memo: '',
     screenshot: null,
@@ -525,7 +525,10 @@ function startActionEdit(badge) {
     sel.appendChild(opt);
   });
   badge.replaceWith(sel); sel.focus();
+  let committed = false;
   const commit = () => {
+    if (committed) return;
+    committed = true;
     const chosen = ACTION_OPTS.find(a => a.key === sel.value) || ACTION_OPTS[0];
     s.actionKey = chosen.key;
     s.actionColor = chosen.color;
@@ -891,103 +894,102 @@ async function exportPptx(activeSteps, baseName) {
   pptx.author = t('app.name');
   pptx.subject = importedTitle;
 
-  const ACCENT = 'e94560';
-  const BG_DARK = '1a1a2e';
-  const TEXT_LIGHT = 'f0f0ff';
-  const TEXT_MID = '9090b8';
+  const ACCENT = '203864';
+  const TEXT_DARK = '1a1a2e';
+  const TEXT_MID = '666666';
   const FONT = 'Meiryo';
 
   // ── Title Slide ──
   const titleSlide = pptx.addSlide();
-  titleSlide.background = { color: BG_DARK };
   titleSlide.addText(importedTitle, {
-    x: 0.8, y: 1.2, w: 8.4, h: 1.0,
-    fontSize: 28, fontFace: FONT, color: TEXT_LIGHT, bold: true
+    x: 0.5, y: 0.7, w: 8.4, h: 1.0,
+    fontSize: 28, fontFace: FONT, color: TEXT_DARK, bold: true, valign: 'middle'
   });
   if (importedSummary) {
     titleSlide.addText(importedSummary, {
-      x: 0.8, y: 2.3, w: 8.4, h: 1.0,
+      x: 0.5, y: 1.8, w: 5.6, h: 1.0,
       fontSize: 12, fontFace: FONT, color: TEXT_MID, valign: 'top'
     });
   }
   const now = new Date().toLocaleString('ja-JP');
   titleSlide.addText(`${now}    ${activeSteps.length} ステップ`, {
-    x: 0.8, y: 4.2, w: 8.4, h: 0.4,
+    x: 0.5, y: 3.8, w: 8.4, h: 0.4,
     fontSize: 11, fontFace: FONT, color: TEXT_MID
   });
   titleSlide.addShape(pptx.ShapeType.rect, {
-    x: 0.8, y: 3.5, w: 2.0, h: 0.05, fill: { color: ACCENT }
+    x: 0.5, y: 3.2, w: 2.0, h: 0.05, fill: { color: ACCENT }
   });
 
   // ── Step Slides ──
   for (let i = 0; i < activeSteps.length; i++) {
     const s = activeSteps[i];
     const slide = pptx.addSlide();
-    slide.background = { color: 'f5f5f8' };
 
     const stepNum = i + 1;
     const actionLabel = t('action.' + s.actionKey);
     const actionColor = s.actionColor.replace('#', '');
 
-    // Step number badge
+    // Step number badge  (x:0.13cm, y:0.13cm)
     slide.addShape(pptx.ShapeType.roundRect, {
-      x: 0.3, y: 0.2, w: 0.45, h: 0.45,
+      x: 0.05, y: 0.05, w: 0.45, h: 0.45,
       fill: { color: ACCENT }, rectRadius: 0.08
     });
     slide.addText(String(stepNum), {
-      x: 0.3, y: 0.2, w: 0.45, h: 0.45,
+      x: 0.05, y: 0.05, w: 0.45, h: 0.45,
       fontSize: 16, fontFace: FONT, color: 'ffffff', bold: true,
       align: 'center', valign: 'middle'
     });
 
-    // Action badge
+    // Action badge  (x:1.4cm, y:0.25cm)
     slide.addShape(pptx.ShapeType.roundRect, {
-      x: 0.85, y: 0.25, w: 0.8, h: 0.35,
+      x: 0.55, y: 0.10, w: 0.8, h: 0.35,
       fill: { color: actionColor, transparency: 85 },
       line: { color: actionColor, width: 0.5 },
       rectRadius: 0.05
     });
     slide.addText(actionLabel, {
-      x: 0.85, y: 0.25, w: 0.8, h: 0.35,
+      x: 0.55, y: 0.10, w: 0.8, h: 0.35,
       fontSize: 10, fontFace: FONT, color: actionColor, bold: true,
       align: 'center', valign: 'middle'
     });
 
-    // Element description
+    // Element description  (x:3.5cm, y:0.19cm, w:15cm)
     slide.addText(s.element || '', {
-      x: 1.75, y: 0.2, w: 7.8, h: 0.4,
+      x: 1.38, y: 0.07, w: 5.91, h: 0.4,
       fontSize: 14, fontFace: FONT, color: '1a1a2e', bold: true, valign: 'middle'
     });
 
-    // Detail line
+    // URL  (x:1.3cm, y:1.4cm)
+    if (showUrl && s.url) {
+      slide.addText(tryHostname(s.url), {
+        x: 0.51, y: 0.55, w: 8.7, h: 0.3,
+        fontSize: 9, fontFace: FONT, color: '666666', valign: 'top'
+      });
+    }
+
+    // Detail line  (x:1.3cm, y:2.1cm)
     const details = [];
-    if (showUrl && s.url) details.push(tryHostname(s.url));
     if (s.value) details.push(s.value);
     if (s.memo) details.push(s.memo);
     if (details.length > 0) {
       slide.addText(details.join('    '), {
-        x: 0.85, y: 0.65, w: 8.7, h: 0.3,
-        fontSize: 9, fontFace: FONT, color: '666666'
+        x: 0.51, y: 0.83, w: 8.7, h: 0.3,
+        fontSize: 9, fontFace: FONT, color: '666666', valign: 'top'
       });
     }
 
     // Screenshot
     if (s.screenshot && s.screenshot.startsWith('data:')) {
-      const maxW = 9.4, maxH = 4.2;
+      const maxW = 9.4, maxH = 3.9;
       const { w: natW, h: natH } = await getImageSize(s.screenshot);
       const ratio = Math.min(maxW / natW, maxH / natH);
       const drawW = natW * ratio;
       const drawH = natH * ratio;
       const drawX = 0.3 + (maxW - drawW) / 2;
-      const drawY = 1.05 + (maxH - drawH) / 2;
+      const drawY = 1.35 + (maxH - drawH) / 2;
       slide.addImage({ data: s.screenshot, x: drawX, y: drawY, w: drawW, h: drawH });
     }
 
-    // Slide number
-    slide.addText(`${stepNum} / ${activeSteps.length}`, {
-      x: 8.5, y: 5.2, w: 1.2, h: 0.3,
-      fontSize: 8, fontFace: FONT, color: '999999', align: 'right'
-    });
   }
 
   // ── Generate and download ──
@@ -1040,7 +1042,7 @@ function buildPageHTML(title, now, count, cardsHTML, summary) {
   .meta span{margin-right:20px}
   .step-card{background:#fff;border-radius:12px;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1px solid #ebebf0}
   .step-header{display:flex;align-items:flex-start;gap:16px;padding:18px 20px}
-  .step-number{min-width:36px;height:36px;background:linear-gradient(135deg,#e94560,#c62a47);color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0}
+  .step-number{min-width:36px;height:36px;background:linear-gradient(135deg,#203864,#162d50);color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0}
   .step-meta{flex:1;min-width:0}
   .step-title{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .action-badge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700}
