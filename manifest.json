@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "操作手順書ジェネレーター",
   "version": "1.0.0",
-  "description": "画面操作をキャプチャして、スクリーンショット付きの手順書を自動生成します",
+  "description": "画面操作を自動でキャプチャし、スクリーンショット付きの操作手順書を生成。クリック・テキスト入力・ドロップダウン選択を記録して、HTML/PowerPoint形式でエクスポートできます。",
   "permissions": [
     "activeTab",
     "scripting",
