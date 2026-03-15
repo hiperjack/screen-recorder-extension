@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>プライバシーポリシー - 操作手順書ジェネレーター</title>
+  <style>
+    body {
+      font-family: "Segoe UI", "Noto Sans JP", sans-serif;
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 20px;
+      line-height: 1.8;
+      color: #333;
+    }
+    h1 { font-size: 1.5em; border-bottom: 2px solid #4a90d9; padding-bottom: 8px; }
+    h2 { font-size: 1.15em; margin-top: 1.5em; color: #4a90d9; }
+    ul { padding-left: 1.5em; }
+    li { margin-bottom: 0.3em; }
+    .date { color: #888; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>プライバシーポリシー</h1>
+  <p class="date">最終更新日: 2026年3月15日</p>
+
+  <p>「操作手順書ジェネレーター」（以下「本拡張機能」）は、ユーザーのプライバシーを尊重し、個人情報の保護に努めます。</p>
+
+  <h2>収集するデータ</h2>
+  <p>本拡張機能は、録画機能の使用中に以下のデータをローカルに保存します。</p>
+  <ul>
+    <li>操作対象のページのスクリーンショット画像</li>
+    <li>クリック・入力・選択などの操作情報（要素名、入力テキスト、XPathなど）</li>
+    <li>操作対象ページのURL・ページタイトル</li>
+  </ul>
+
+  <h2>データの保存場所</h2>
+  <p>すべてのデータはお使いのブラウザ内（chrome.storage.local および chrome.storage.session）にのみ保存されます。外部サーバーへのデータ送信は一切行いません。</p>
+
+  <h2>データの安全対策</h2>
+  <ul>
+    <li>パスワード入力欄（type="password"）の内容は記録しません</li>
+    <li>URLに含まれる機密性の高いパラメータ（token、key、secret、session など）は自動的にマスクされます</li>
+  </ul>
+
+  <h2>データの共有</h2>
+  <p>本拡張機能は、ユーザーのデータを第三者に送信、共有、販売することはありません。エクスポート機能（ZIP、PowerPoint）によるファイル出力はすべてユーザーの操作によりローカルに保存されます。</p>
+
+  <h2>権限の使用目的</h2>
+  <ul>
+    <li><strong>activeTab / tabs:</strong> 録画中のタブ情報の取得およびスクリーンショットの撮影に使用します</li>
+    <li><strong>scripting:</strong> 操作記録用のスクリプトをページに注入するために使用します</li>
+    <li><strong>storage / unlimitedStorage:</strong> 記録したステップデータや設定をローカルに保存するために使用します</li>
+    <li><strong>host_permissions (&lt;all_urls&gt;):</strong> あらゆるウェブページ上で操作を記録できるようにするために使用します</li>
+  </ul>
+
+  <h2>お問い合わせ</h2>
+  <p>本ポリシーに関するご質問は、Chrome Web Store の拡張機能ページよりお問い合わせください。</p>
+
+  <hr>
+
+  <h1 lang="en">Privacy Policy</h1>
+  <p class="date">Last updated: March 15, 2026</p>
+
+  <p>"Operation Manual Generator" (the "Extension") respects your privacy and is committed to protecting your personal information.</p>
+
+  <h2>Data Collected</h2>
+  <p>While the recording feature is active, the Extension stores the following data locally:</p>
+  <ul>
+    <li>Screenshots of the pages being operated on</li>
+    <li>Interaction data such as clicks, text input, and selections (element names, input text, XPath, etc.)</li>
+    <li>URLs and page titles of the pages being operated on</li>
+  </ul>
+
+  <h2>Data Storage</h2>
+  <p>All data is stored exclusively within your browser (chrome.storage.local and chrome.storage.session). No data is ever transmitted to external servers.</p>
+
+  <h2>Data Safety Measures</h2>
+  <ul>
+    <li>Password fields (type="password") are never recorded</li>
+    <li>Sensitive URL parameters (token, key, secret, session, etc.) are automatically masked</li>
+  </ul>
+
+  <h2>Data Sharing</h2>
+  <p>The Extension does not send, share, or sell any user data to third parties. All file exports (ZIP, PowerPoint) are saved locally through user-initiated actions.</p>
+
+  <h2>Permission Usage</h2>
+  <ul>
+    <li><strong>activeTab / tabs:</strong> Used to access the current tab for screenshots and tab information during recording</li>
+    <li><strong>scripting:</strong> Used to inject the recording script into web pages</li>
+    <li><strong>storage / unlimitedStorage:</strong> Used to store recorded step data and settings locally</li>
+    <li><strong>host_permissions (&lt;all_urls&gt;):</strong> Used to enable recording on any web page</li>
+  </ul>
+
+  <h2>Contact</h2>
+  <p>For questions about this policy, please contact us through the Extension's page on the Chrome Web Store.</p>
+</body>
+</html>
